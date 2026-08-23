@@ -1,218 +1,500 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Nexus AI — Groq</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-  :root {
-    --bg: #0d0d0f;
-    --surface: #16161a;
-    --surface-raised: #1e1e24;
-    --border: #2a2a32;
-    --text-primary: #f0f0f5;
-    --text-secondary: #a0a0b0;
-    --text-tertiary: #6e6e7e;
-    --text-quaternary: #4a4a58;
-    --accent: #a855f7;
-    --accent-soft: rgba(168,85,247,0.15);
-    --positive: #22c55e;
-    --danger: #ef4444;
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
-  html, body { height:100%; background: var(--bg); color: var(--text-primary); overflow:hidden; }
-  @supports (height: 100dvh) {
-    html, body { height: 100dvh; }
-  }
-  #app { max-width:420px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; background: var(--bg); }
-  @supports (height: 100dvh) {
-    #app { height: 100dvh; }
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI - Groq</title>
+    <style>
+        /* Reset e Fonte */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body { 
+            background-color: #000; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
 
-  .header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--border); flex-shrink:0; }
-  .logo { display:flex; align-items:center; gap:8px; font-size:19px; font-weight:600; letter-spacing:-0.3px; }
-  .logo-icon { width:24px; height:24px; color: var(--accent); }
-  .logo span { color: var(--accent); font-weight:600; }
-  .header-actions { display:flex; gap:6px; }
-  .icon-btn { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); border:none; background:transparent; cursor:pointer; color: var(--text-secondary); transition: all 0.15s ease; }
-  .icon-btn:hover { background: var(--surface-raised); color: var(--text-primary); }
-  .icon-btn svg { width:20px; height:20px; }
+        /* MODO CELULAR */
+        .phone {
+            width: 380px;
+            height: 780px;
+            background-color: #111;
+            border: 5px solid #333;
+            border-radius: 40px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
 
-  .status-bar { display:flex; align-items:center; gap:6px; padding:8px 18px; font-size:12px; color: var(--text-tertiary); flex-shrink:0; }
-  .status-dot { width:7px; height:7px; border-radius:50%; background: var(--positive); box-shadow:0 0 6px var(--positive); }
-  .status-dot.off { background: var(--danger); box-shadow:0 0 6px var(--danger); }
+        /* MODO PC (Tela cheia) */
+        @media (min-width: 1024px) {
+            body { background-color: #0a0a0a; }
+            .phone {
+                width: 100vw;
+                height: 100vh;
+                border: none;
+                border-radius: 0;
+                display: grid;
+                grid-template-columns: 280px 1fr;
+            }
 
-  .chat-area { flex:1; overflow-y:auto; min-height:0; padding:16px 18px; display:flex; flex-direction:column; gap:14px; }
-  .chat-area::-webkit-scrollbar { width:4px; }
-  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius:4px; }
-  .msg { max-width:88%; padding:12px 16px; border-radius:var(--radius-xl); font-size:15px; line-height:1.55; animation: msgIn 0.25s ease; }
-  @keyframes msgIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-  .msg-bot { align-self:flex-start; background: var(--surface); color: var(--text-primary); border-bottom-left-radius:6px; }
-  .msg-user { align-self:flex-end; background: var(--accent); color:#fff; border-bottom-right-radius:6px; }
-  .msg-time { font-size:10px; color: var(--text-quaternary); margin-top:6px; text-align:right; }
+            .mobile-only { display: none !important; }
 
-  .input-bar { display:flex; align-items:center; gap:10px; padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0; background: var(--bg); }
-  .input-wrapper { flex:1; display:flex; align-items:center; gap:10px; background: var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:10px 14px; transition: border-color 0.15s; }
-  .input-wrapper:focus-within { border-color: var(--accent); }
-  .input-wrapper input { flex:1; border:none; outline:none; background:transparent; font-size:15px; color: var(--text-primary); }
-  .input-wrapper input::placeholder { color: var(--text-quaternary); }
-  .send-btn { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:var(--radius-sm); border:none; background: var(--accent); color:#fff; cursor:pointer; transition: all 0.15s; flex-shrink:0; }
-  .send-btn:hover { opacity:0.9; transform:scale(1.05); }
-  .send-btn:active { transform:scale(0.95); }
-  .send-btn svg { width:18px; height:18px; }
+            .pc-layout {
+                display: flex !important;
+                flex-direction: column;
+                height: 100%;
+                background-color: #1a1a1a;
+                border-right: 1px solid #333;
+            }
+            
+            .pc-chat-area {
+                grid-column: 2;
+                display: flex !important;
+                flex-direction: column;
+                height: 100%;
+                background-color: #111;
+            }
+        }
 
-  .screen { position:absolute; inset:0; background: var(--bg); display:none; flex-direction:column; z-index:50; animation: screenIn 0.2s ease; }
-  @keyframes screenIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
-  .screen.active { display:flex; }
-  .screen-header { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border); flex-shrink:0; }
-  .screen-title { font-size:18px; font-weight:600; }
-  .screen-body { flex:1; overflow-y:auto; min-height:0; padding:20px 18px; }
+        /* Layout Mobile padrão */
+        .pc-layout { display: none; }
+        .screen { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; flex-direction: column; background-color: #111; }
+        .screen.active { display: flex; }
 
-  .setting-card { background: var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:4px 0; margin-bottom:16px; }
-  .setting-row { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer; transition: background 0.1s; border-bottom:1px solid var(--border); }
-  .setting-row:last-child { border-bottom:none; }
-  .setting-row:hover { background: var(--surface-raised); }
-  .setting-info { display:flex; flex-direction:column; gap:2px; }
-  .setting-label { font-size:15px; font-weight:500; color: var(--text-primary); }
-  .setting-hint { font-size:13px; color: var(--text-tertiary); }
-  .setting-arrow { color: var(--text-quaternary); }
-  .setting-arrow svg { width:16px; height:16px; }
+        /* CSS Comum */
+        header { padding: 30px 20px 10px; }
+        .logo { color: #ccc; font-size: 26px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .icon-logo { font-size: 32px; color: #5e5ce6; transform: rotate(-45deg); }
+        .ai-text { color: #5e5ce6; }
 
-  .api-section { margin-top:8px; }
-  .api-section label { display:block; font-size:13px; color: var(--text-tertiary); margin-bottom:8px; font-weight:500; }
-  .api-input-wrap { position:relative; }
-  .api-input { width:100%; padding:12px 44px 12px 14px; border-radius:var(--radius-md); border:1px solid var(--border); background: var(--surface); font-size:14px; color: var(--text-primary); outline:none; transition: border-color 0.15s; font-family: 'SF Mono', monospace; letter-spacing:0.3px; }
-  .api-input:focus { border-color: var(--accent); }
-  .api-input-wrap .toggle-vis { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color: var(--text-tertiary); cursor:pointer; padding:4px; }
-  .api-input-wrap .toggle-vis:hover { color: var(--text-primary); }
-  .save-btn { width:100%; margin-top:14px; padding:13px; border-radius:var(--radius-md); border:none; background: var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; transition: opacity 0.15s; }
-  .save-btn:hover { opacity:0.9; }
-  .save-btn:active { transform:scale(0.98); }
+        .chat-area { flex: 1; background-color: #222; margin: 0 15px; border-radius: 20px; padding: 20px; color: #aaa; font-size: 15px; overflow-y: auto; border: 1px solid #333; display: flex; flex-direction: column; }
+        
+        .input-area { padding: 15px; }
+        .input-box { background-color: #222; border-radius: 30px; display: flex; align-items: center; padding: 5px 10px; border: 1px solid #333; }
+        .input-box input { flex: 1; background: transparent; border: none; color: white; padding: 10px; outline: none; font-size: 15px; }
+        .btn-icon, .btn-send { background: transparent; border: none; color: #5e5ce6; font-size: 22px; cursor: pointer; padding: 0 10px; }
 
-  .model-item { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-radius:var(--radius-md); margin-bottom:10px; cursor:pointer; border:1px solid var(--border); background: var(--surface); transition: all 0.15s; }
-  .model-item:hover { border-color: var(--text-quaternary); background: var(--surface-raised); }
-  .model-item.selected { border-color: var(--accent); background: var(--accent-soft); }
-  .model-name { font-size:15px; font-weight:600; color: var(--text-primary); display:flex; align-items:center; gap:8px; }
-  .model-desc { font-size:12px; color: var(--text-tertiary); margin-top:3px; }
-  .model-check { color: var(--accent); opacity:0; transition: opacity 0.15s; }
-  .model-item.selected .model-check { opacity:1; }
-  .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; }
-  .badge-pro { background: var(--accent-soft); color: var(--accent); }
-  .badge-instant { background: rgba(34,197,94,0.12); color: var(--positive); }
+        /* Menus */
+        .menu-container { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; gap: 10px; padding: 30px 20px; overflow-y: auto; }
+        .menu-title { color: white; font-size: 18px; margin-bottom: 20px; text-align: center; }
+        
+        .menu-btn { background-color: #333; color: #ddd; border: none; padding: 15px; width: 100%; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.3s; text-align: center; }
+        .menu-btn:hover, .menu-btn.active { background-color: #5e5ce6; color: white; }
+        
+        /* Botões */
+        .back-btn { position: absolute; bottom: 20px; right: 20px; background: transparent; border: 2px solid #5e5ce6; border-radius: 50%; width: 40px; height: 40px; color: #5e5ce6; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transform: rotate(-90deg); z-index: 10; }
+        
+        .input-chave { background-color: #333; border: none; padding: 15px; border-radius: 10px; color: white; width: 100%; text-align: center; outline: none; font-size: 14px; letter-spacing: 1px; margin-bottom: 15px; }
+        
+        /* Mensagens (CORRIGIDO) */
+        .msg { margin-bottom: 15px; max-width: 95%; word-wrap: break-word; white-space: pre-wrap; line-height: 1.4; }
+        .msg.user { color: #7b79ff; text-align: right; margin-left: auto; }
+        .msg.bot { color: #aaa; text-align: left; margin-right: auto; width: 100%; max-width: 100%; }
+        .msg.thinking { color: #555; font-style: italic; }
 
-  .toast { position:absolute; bottom:90px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0; background: var(--surface-raised); color: var(--text-primary); padding:12px 22px; border-radius:var(--radius-lg); font-size:13px; font-weight:500; pointer-events:none; transition: all 0.3s ease; z-index:100; border:1px solid var(--border); box-shadow:0 8px 32px rgba(0,0,0,0.4); }
-  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+        /* Bloco de Código */
+        .code-block {
+            position: relative;
+            background-color: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            overflow-x: auto; /* Permite rolagem horizontal */
+            max-height: 300px; /* Limita a altura */
+            overflow-y: auto;
+        }
+        
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #888;
+            font-weight: bold;
+        }
 
-  .typing { display:flex; gap:4px; padding:14px 16px; }
-  .typing span { width:7px; height:7px; background: var(--text-tertiary); border-radius:50%; animation: typingBounce 1.2s infinite ease-in-out; }
-  .typing span:nth-child(2) { animation-delay:0.15s; }
-  .typing span:nth-child(3) { animation-delay:0.3s; }
-  @keyframes typingBounce { 0%,60%,100%{transform:translateY(0);} 30%{transform:translateY(-6px);} }
+        .copy-btn {
+            background-color: #333;
+            color: #ccc;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+        }
 
-  @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    .input-bar { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
-  }
-</style>
+        .copy-btn:hover { background-color: #5e5ce6; color: white; }
+        .copy-btn.copied { background-color: #28a745; color: white; }
+
+        pre {
+            margin: 0;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            color: #e0e0e0;
+            white-space: pre; /* Mantém indentação */
+        }
+
+        /* Histórico de Chats */
+        .chat-history-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #333; color: white; font-weight: bold; }
+        .history-list { flex: 1; overflow-y: auto; padding: 10px; }
+        .history-item { display: flex; justify-content: space-between; align-items: center; background-color: #222; border-radius: 8px; padding: 10px; margin-bottom: 8px; cursor: pointer; color: #ddd; font-size: 14px; border: 1px solid transparent; transition: 0.2s; }
+        .history-item:hover { background-color: #333; }
+        .history-item.active { border-color: #5e5ce6; background-color: #2a2a4a; }
+        .history-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 10px; }
+        .history-item-actions button { background: transparent; border: none; color: #888; cursor: pointer; margin-left: 5px; font-size: 14px; }
+        .history-item-actions button:hover { color: #ff5e5e; }
+
+        .new-chat-btn { background-color: #5e5ce6; color: white; border: none; padding: 12px; width: calc(100% - 20px); margin: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .new-chat-btn:hover { background-color: #4b49c4; }
+
+        .danger-btn { background-color: #dc3545; color: white; border: none; padding: 15px; width: calc(100% - 20px); margin: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .danger-btn:hover { background-color: #c82333; }
+    </style>
 </head>
 <body>
 
-<div id="app">
-  <div class="header">
-    <div class="logo">
-      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor"/>
-        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      NEXUS <span>AI</span>
-    </div>
-    <div class="header-actions">
-      <button class="icon-btn" onclick="clearChat()" title="Limpar conversa" aria-label="Limpar">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M17.9542 4.77253C18.3056 4.42106 18.8761 4.42106 19.2276 4.77253C19.579 5.12401 19.579 5.69452 19.2276 6.04597L13.2735 12.0001L19.2276 17.9542C19.5791 18.3056 19.5791 18.8761 19.2276 19.2276C18.8761 19.5791 18.3056 19.5791 17.9542 19.2276L12.0001 13.2735L6.04595 19.2276C5.69451 19.5791 5.12399 19.579 4.77252 19.2276C4.42104 18.8761 4.42104 18.3056 4.77252 17.9542L10.7266 12.0001L4.77252 6.04597C4.42104 5.6945 4.42104 5.124 4.77252 4.77253C5.12399 4.42107 5.69448 4.42106 6.04595 4.77253L12.0001 10.7266L17.9542 4.77253Z" fill="currentColor"/></svg>
-      </button>
-      <button class="icon-btn" onclick="openScreen('settings')" title="Configurações" aria-label="Configurações">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M16.0404 12C16.0404 9.76874 14.2313 7.9596 12.0001 7.9596C9.76883 7.9596 7.95972 9.76874 7.95972 12C7.95972 14.2313 9.76883 16.0404 12.0001 16.0404C14.2313 16.0404 16.0404 14.2313 16.0404 12ZM14.2222 12C14.2222 13.2271 13.2271 14.2222 12 14.2222C10.7729 14.2222 9.77783 13.2271 9.77783 12C9.77783 10.7729 10.7729 9.77778 12 9.77778C13.2271 9.77778 14.2222 10.7729 14.2222 12Z" fill="currentColor"/><path d="M9.91145 21.8009C9.29001 21.6797 8.76914 21.2612 8.50632 20.6922L8.07372 19.7556C7.88838 19.3544 7.43553 19.1048 6.95371 19.1549L5.89572 19.2647C5.2733 19.3293 4.64823 19.114 4.22298 18.6611C3.74343 18.1504 3.32454 17.6037 2.97033 17.0181C2.61571 16.4318 2.32839 15.8106 2.10407 15.1566C1.89769 14.5549 2.02148 13.8954 2.4089 13.3902L3.0376 12.5704C3.30043 12.2277 3.30042 11.7722 3.03758 11.4295L2.40413 10.6035C2.01474 10.0958 1.891 9.43198 2.10208 8.82826C2.55037 7.54612 3.27017 6.35997 4.22 5.34259C4.64518 4.8872 5.27275 4.67067 5.89701 4.73544L6.95383 4.84514C7.43561 4.89515 7.88844 4.6456 8.07377 4.24441L8.50266 3.31593C8.76494 2.74818 9.28448 2.33019 9.90423 2.20761C11.2916 1.9332 12.7148 1.93127 14.0885 2.19913C14.7099 2.32029 15.2308 2.73881 15.4937 3.3078L15.9263 4.24441C16.1116 4.6456 16.5644 4.89514 17.0462 4.84514L18.1043 4.73532C18.7267 4.67072 19.3518 4.88603 19.777 5.33886C20.2566 5.84953 20.6755 6.3963 21.0297 6.98193C21.3843 7.56823 21.6716 8.18942 21.8959 8.84339C22.1023 9.44509 21.9785 10.1046 21.5911 10.6098L20.9624 11.4295C20.6996 11.7722 20.6996 12.2278 20.9624 12.5705L21.5959 13.3964C21.9853 13.9042 22.109 14.568 21.8979 15.1717C21.4497 16.4538 20.7299 17.6399 19.7801 18.6573C19.3549 19.1128 18.7273 19.3294 18.103 19.2646L17.0462 19.1549C16.5645 19.1049 16.1116 19.3544 15.9263 19.7556L15.4974 20.6841C15.2351 21.2518 14.7156 21.6698 14.0958 21.7924C12.7083 22.0668 11.2852 22.0687 9.91145 21.8009ZM13.7432 20.0088C13.7844 20.0006 13.8259 19.9673 13.847 19.9216L14.2758 18.9931C14.7915 17.8768 15.9886 17.2171 17.2341 17.3464L18.2909 17.4561C18.3649 17.4638 18.4272 17.4423 18.4512 17.4166C19.2296 16.5828 19.8171 15.6146 20.1817 14.5716C20.1845 14.5636 20.1796 14.5373 20.1532 14.5029L19.5198 13.677C18.7564 12.6815 18.7564 11.3185 19.5198 10.323L20.1485 9.5033C20.1746 9.46927 20.1795 9.4429 20.1762 9.43327C19.9932 8.89965 19.7603 8.39623 19.4741 7.92293C19.1873 7.4489 18.846 7.00333 18.4517 6.58351C18.4272 6.55739 18.3656 6.53616 18.2921 6.54378L17.234 6.65361C15.9886 6.78287 14.7915 6.12317 14.2758 5.00689L13.8432 4.07027C13.822 4.02448 13.7811 3.9916 13.7406 3.98371C12.5983 3.76097 11.4132 3.76258 10.2571 3.99124C10.2158 3.99941 10.1744 4.03271 10.1533 4.07842L9.72441 5.00689C9.20875 6.12317 8.01164 6.7829 6.76619 6.6536L5.70942 6.54391C5.63535 6.53623 5.573 6.55774 5.54905 6.5834C4.77067 7.41713 4.18312 8.38534 3.81845 9.42835C3.81564 9.43637 3.82054 9.46265 3.84693 9.49706L4.48038 10.323C5.24381 11.3185 5.24383 12.6815 4.48041 13.6769L3.85171 14.4967C3.82561 14.5307 3.82066 14.5571 3.82396 14.5667C4.00701 15.1004 4.23986 15.6038 4.52613 16.0771C4.81284 16.5511 5.15421 16.9967 5.54845 17.4165C5.57298 17.4426 5.63461 17.4638 5.70811 17.4562L6.76608 17.3464C8.01157 17.2171 9.20871 17.8768 9.72438 18.9932L10.157 19.9297C10.1781 19.9755 10.2191 20.0084 10.2595 20.0163C11.4018 20.239 12.587 20.2374 13.7432 20.0088Z" fill="currentColor"/></svg>
-      </button>
-    </div>
-  </div>
+    <div class="phone">
+        
+        <!-- BARRA LATERAL (PC) -->
+        <div class="pc-layout">
+            <header style="border-bottom: 1px solid #333;">
+                <div class="logo">
+                    <span class="icon-logo">⌃</span> NEXUS <span class="ai-text">AI</span>
+                </div>
+            </header>
+            
+            <div class="chat-history-header"><span>Conversas</span></div>
+            <button class="new-chat-btn" onclick="createNewChat()">+ Nova Conversa</button>
+            <div class="history-list" id="pc-history-list"></div>
 
-  <div class="status-bar">
-    <div class="status-dot" id="statusDot"></div>
-    <span id="statusText">Sem chave API configurada</span>
-  </div>
+            <div style="padding: 15px; border-top: 1px solid #333;">
+                <button class="menu-btn" onclick="openPcMenu('key')" style="margin-bottom: 5px;">🔑 Configurar Chave</button>
+                <button class="menu-btn" onclick="openPcMenu('models')">🧠 Escolher Modelo</button>
+                <button class="danger-btn" onclick="clearAllData()" style="margin-top: 10px;">🗑️ Apagar Dados</button>
+            </div>
 
-  <div class="chat-area" id="chatArea">
-    <div class="msg msg-bot">Olá, eu sou a Nexus. Como posso ajudar?<div class="msg-time">Agora</div></div>
-  </div>
-
-  <div class="input-bar">
-    <div class="input-wrapper">
-      <input type="text" id="chatInput" placeholder="digite algo..." onkeydown="if(event.key==='Enter') sendMsg()">
-    </div>
-    <button class="send-btn" onclick="sendMsg()" aria-label="Enviar">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M16.5364 10.1636C16.8879 10.5151 16.8879 11.0849 16.5364 11.4364C16.1849 11.7879 15.6151 11.7879 15.2636 11.4364L12.9 9.07281V17.1C12.9 17.597 12.4971 18 12 18C11.503 18 11.1 17.597 11.1 17.1V9.07281L8.73641 11.4364C8.38494 11.7879 7.81509 11.7879 7.46362 11.4364C7.11214 11.0849 7.11214 10.5151 7.46362 10.1636L11.3636 6.2636C11.7151 5.91211 12.2849 5.91211 12.6364 6.2636L16.5364 10.1636Z" fill="currentColor"/></svg>
-    </button>
-  </div>
-
-  <div class="screen" id="screen-settings">
-    <div class="screen-header">
-      <button class="icon-btn" onclick="closeScreen()" aria-label="Voltar">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path fill-rule="evenodd" clip-rule="evenodd" d="M21.4387 12.814C21.788 12.4622 21.787 11.8941 21.4364 11.5436L15.8979 6.0051C15.5464 5.65363 14.9766 5.65363 14.6251 6.0051C14.2737 6.35657 14.2737 6.92642 14.6251 7.27789L18.6272 11.28H2.79998C2.30293 11.28 1.89998 11.6829 1.89998 12.18C1.89998 12.677 2.30293 13.08 2.79998 13.08H18.6272L14.6251 17.0821C14.2737 17.4336 14.2737 18.0034 14.6251 18.3549C14.9766 18.7064 15.5464 18.7064 15.8979 18.3549L21.4364 12.8164C21.4372 12.8156 21.438 12.8148 21.4387 12.814Z" fill="currentColor"/></svg>
-      </button>
-      <div class="screen-title">Configurações</div>
-    </div>
-    <div class="screen-body">
-      <div class="setting-card">
-        <div class="setting-row" onclick="openScreen('models')">
-          <div class="setting-info">
-            <div class="setting-label">Mudar modelo</div>
-            <div class="setting-hint" id="currentModelHint">openai/gpt-oss-120b</div>
-          </div>
-          <div class="setting-arrow">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path fill-rule="evenodd" clip-rule="evenodd" d="M21.4387 12.814C21.788 12.4622 21.787 11.8941 21.4364 11.5436L15.8979 6.0051C15.5464 5.65363 14.9766 5.65363 14.6251 6.0051C14.2737 6.35657 14.2737 6.92642 14.6251 7.27789L18.6272 11.28H2.79998C2.30293 11.28 1.89998 11.6829 1.89998 12.18C1.89998 12.677 2.30293 13.08 2.79998 13.08H18.6272L14.6251 17.0821C14.2737 17.4336 14.2737 18.0034 14.6251 18.3549C14.9766 18.7064 15.5464 18.7064 15.8979 18.3549L21.4364 12.8164C21.4372 12.8156 21.438 12.8148 21.4387 12.814Z" fill="currentColor"/></svg>
-          </div>
+            <div id="pc-menu-content" style="width: 100%; padding: 10px; display: none; background:#222;"></div>
         </div>
-      </div>
 
-      <div class="api-section">
-        <label>Chave API Groq</label>
-        <div class="api-input-wrap">
-          <input type="password" class="api-input" id="apiKeyInput" placeholder="gsk_..." value="">
-          <button class="toggle-vis" onclick="toggleVisibility()" aria-label="Mostrar/ocultar">
-            <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M12 5C7.5 5 3.7 8.1 2 12C3.7 15.9 7.5 19 12 19C16.5 19 20.3 15.9 22 12C20.3 8.1 16.5 5 12 5ZM12 17C8.7 17 6 14.8 6 12C6 9.2 8.7 7 12 7C15.3 7 18 9.2 18 12C18 14.8 15.3 17 12 17ZM12 9C10.3 9 9 10.3 9 12C9 13.7 10.3 15 12 15C13.7 15 15 13.7 15 12C15 10.3 13.7 9 12 9Z" fill="currentColor"/></svg>
-          </button>
-        </div>
-        <button class="save-btn" onclick="saveApiKey()">Salvar chave</button>
-      </div>
-    </div>
-  </div>
+        <!-- ÁREA DO CHAT -->
+        <div class="pc-chat-area">
+            <header class="mobile-only">
+                <div class="logo">
+                    <span class="icon-logo">⌃</span> NEXUS <span class="ai-text">AI</span>
+                </div>
+            </header>
 
-  <div class="screen" id="screen-models">
-    <div class="screen-header">
-      <button class="icon-btn" onclick="closeScreen()" aria-label="Voltar">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path fill-rule="evenodd" clip-rule="evenodd" d="M21.4387 12.814C21.788 12.4622 21.787 11.8941 21.4364 11.5436L15.8979 6.0051C15.5464 5.65363 14.9766 5.65363 14.6251 6.0051C14.2737 6.35657 14.2737 6.92642 14.6251 7.27789L18.6272 11.28H2.79998C2.30293 11.28 1.89998 11.6829 1.89998 12.18C1.89998 12.677 2.30293 13.08 2.79998 13.08H18.6272L14.6251 17.0821C14.2737 17.4336 14.2737 18.0034 14.6251 18.3549C14.9766 18.7064 15.5464 18.7064 15.8979 18.3549L21.4364 12.8164C21.4372 12.8156 21.438 12.8148 21.4387 12.814Z" fill="currentColor"/></svg>
-      </button>
-      <div class="screen-title">Modelos</div>
+            <div id="screen-chat" class="screen active" style="position: relative; height: 100%; display: flex; flex-direction: column;">
+                <main class="chat-area" id="chat-area" style="margin: 0 15px;"></main>
+                <footer class="input-area">
+                    <div class="input-box">
+                        <button class="btn-icon mobile-only" id="menu-btn" onclick="goToScreen('screen-menu')">☰</button>
+                        <input type="text" id="user-input" placeholder="digite algo">
+                        <button class="btn-send" onclick="sendMessage()">↑</button>
+                    </div>
+                </footer>
+            </div>
+
+            <div id="screen-menu" class="screen mobile-only">
+                <div class="chat-history-header"><span>Conversas</span></div>
+                <button class="new-chat-btn" onclick="createNewChat()">+ Nova Conversa</button>
+                <div class="history-list" id="mobile-history-list"></div>
+                <div style="padding: 15px; border-top: 1px solid #333;">
+                    <button class="menu-btn" onclick="goToScreen('screen-key')" style="margin-bottom: 5px;">🔑 Chave API</button>
+                    <button class="menu-btn" onclick="goToScreen('screen-models')">🧠 Mudar Modelo</button>
+                    <button class="danger-btn" onclick="clearAllData()" style="margin-top: 10px;">🗑️ Apagar Dados</button>
+                </div>
+                <button class="back-btn" onclick="goToScreen('screen-chat')">⌃</button>
+            </div>
+
+            <div id="screen-models" class="screen mobile-only">
+                <div class="menu-container">
+                    <h3 class="menu-title">Selecione o Modelo</h3>
+                    <div id="mobile-model-list"></div>
+                </div>
+                <button class="back-btn" onclick="goToScreen('screen-menu')">⌃</button>
+            </div>
+
+            <div id="screen-key" class="screen mobile-only">
+                <div class="menu-container">
+                    <h3 class="menu-title">Insira sua Chave Groq</h3>
+                    <input type="password" id="api-key-input" class="input-chave" placeholder="gsk_...">
+                    <button class="menu-btn" onclick="saveKey()">Salvar</button>
+                    <p id="status-key" style="color: #5e5ce6; font-size: 12px; text-align: center;"></p>
+                </div>
+                <button class="back-btn" onclick="goToScreen('screen-menu')">⌃</button>
+            </div>
+        </div>
+
     </div>
-    <div class="screen-body">
-      <div class="model-item selected" onclick="selectModel(this, 'openai/gpt-oss-120b')">
-        <div>
-          <div class="model-name">GPT-OSS 120B <span class="badge badge-pro">Poderoso</span></div>
-          <div class="model-desc">Melhor raciocínio e qualidade de resposta</div>
-        </div>
-        <div class="model-check">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M19.3027 5.9053C19.6542 5.55397 20.2247 5.55388 20.5761 5.9053C20.9273 6.25675 20.9273 6.82734 20.5761 7.17874L9.65911 18.0948C9.30773 18.4461 8.73814 18.446 8.38665 18.0948L3.42376 13.1328C3.0726 12.7814 3.07263 12.2118 3.42376 11.8604C3.77524 11.509 4.34575 11.5089 4.6972 11.8604L9.02239 16.1856L19.3027 5.9053Z" fill="currentColor"/></svg>
-        </div>
-      </div>
-      <div class="model-item" onclick="selectModel(this, 'openai/gpt-oss-20b')">
-        <div>
-          <div class="model-name">GPT-OSS 20B <span class="badge badge-instant">Rápido</span></div>
-          <div class="model-desc">Ultra-rápido, 1000 tokens/seg — ideal para tarefas simples</div>
-        </div>
-        <div class="model-check">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18"><path d="M19.3027 5.9053C19.6542 5.55397 20.2247 5.55388 20.5761 5.9053C20.9273 6.25675 20.9273 6.82734 20.5761 7.17874L9.65911 18.0948C9.30773 18.4461 8.73814 18.446 8.38665 18.0948L3.42376 13.1328C3.0726 12.7814 3.07263 12.2118 3.42376 
+
+    <script>
+        const API_URL = "https://api.groq.com/openai/v1/chat/completions";
+        let apiKey = localStorage.getItem('groq_api_key') || '';
+        
+        const MODELS = [
+            { id: 'openai/gpt-oss-20b', name: 'OpenAI GPT-OSS 20B' },
+            { id: 'openai/gpt-oss-120b', name: 'OpenAI GPT-OSS 120B' },
+            { id: 'moonshotai/kimi-k2-instruct', name: 'Kimi K2 Instruct' },
+            { id: 'qwen/qwen3-32b', name: 'Qwen 3 32B' },
+            { id: 'deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 Qwen 32B' },
+            { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' },
+            { id: 'gemma2-9b-it', name: 'Gemma 2 9B' }
+        ];
+
+        let chats = JSON.parse(localStorage.getItem('nexus_chats')) || [];
+        let currentChatId = localStorage.getItem('nexus_current_chat') || null;
+        let currentModel = 'openai/gpt-oss-20b';
+
+        // *** FUNÇÃO CORRIGIDA PARA RENDERIZAR CÓDIGO ***
+        function renderMessageContent(content, type) {
+            // Divide o conteúdo em partes de texto e blocos de código
+            const parts = content.split(/(```[\s\S]*?```)/g);
+            
+            const container = document.createElement('div');
+            container.style.width = '100%';
+
+            parts.forEach(part => {
+                if (part.startsWith('```') && part.endsWith('```')) {
+                    // Identifica a linguagem
+                    const firstLineEnd = part.indexOf('\n');
+                    const lang = part.substring(3, firstLineEnd).trim() || 'code';
+                    const code = part.substring(firstLineEnd + 1, part.length - 3);
+
+                    // Cria o bloco de código estilizado
+                    const codeBlock = document.createElement('div');
+                    codeBlock.className = 'code-block';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'code-header';
+                    header.innerHTML = `<span>${lang}</span>`;
+                    
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.innerText = 'Copiar';
+                    copyBtn.onclick = async () => {
+                        try {
+                            await navigator.clipboard.writeText(code);
+                            copyBtn.innerText = 'Copiado!';
+                            copyBtn.classList.add('copied');
+                            setTimeout(() => { copyBtn.innerText = 'Copiar'; copyBtn.classList.remove('copied'); }, 2000);
+                        } catch (e) { alert('Erro ao copiar'); }
+                    };
+                    header.appendChild(copyBtn);
+
+                    const pre = document.createElement('pre');
+                    pre.textContent = code; // Usa textContent para não quebrar HTML
+
+                    codeBlock.appendChild(header);
+                    codeBlock.appendChild(pre);
+                    container.appendChild(codeBlock);
+                } else {
+                    // Texto normal
+                    const textDiv = document.createElement('div');
+                    textDiv.style.whiteSpace = 'pre-wrap';
+                    textDiv.textContent = part;
+                    container.appendChild(textDiv);
+                }
+            });
+
+            return container;
+        }
+
+        // *** FUNÇÃO ADICIONAR MENSAGEM ATUALIZADA ***
+        function addMessage(content, type, fromHistory = false) {
+            const chatArea = document.getElementById('chat-area');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'msg ' + type;
+            
+            if (type === 'bot') {
+                msgDiv.appendChild(renderMessageContent(content, type));
+            } else {
+                msgDiv.textContent = content;
+            }
+
+            chatArea.appendChild(msgDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return msgDiv;
+        }
+
+        // *** RESTANTE DA LÓGICA (SEM ALTERAÇÕES) ***
+        function initializeChats() {
+            if (chats.length === 0 || !currentChatId) createNewChat();
+            else { loadChat(currentChatId); renderHistory(); }
+        }
+
+        function createNewChat() {
+            const newChat = { id: Date.now().toString(), title: "Nova Conversa", model: 'openai/gpt-oss-20b', messages: [] };
+            chats.unshift(newChat);
+            currentChatId = newChat.id;
+            saveChats();
+            loadChat(currentChatId);
+            renderHistory();
+        }
+
+        function saveChats() {
+            localStorage.setItem('nexus_chats', JSON.stringify(chats));
+            localStorage.setItem('nexus_current_chat', currentChatId);
+        }
+
+        function loadChat(chatId) {
+            const chat = chats.find(c => c.id === chatId);
+            if (!chat) return;
+            currentChatId = chatId;
+            currentModel = chat.model;
+            const chatArea = document.getElementById('chat-area');
+            chatArea.innerHTML = ''; 
+            chat.messages.forEach(msg => addMessage(msg.content, msg.role === 'user' ? 'user' : 'bot'));
+            if (chat.messages.length === 0) addMessage("Olá, eu sou a Nexus, como posso ajudar?", 'bot');
+            updateStatus();
+            renderHistory(); 
+        }
+
+        function renderHistory() {
+            const lists = [document.getElementById('mobile-history-list'), document.getElementById('pc-history-list')];
+            lists.forEach(list => {
+                if (!list) return;
+                list.innerHTML = '';
+                chats.forEach(chat => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item' + (chat.id === currentChatId ? ' active' : '');
+                    item.innerHTML = `<div class="history-item-title" ondblclick="renameChat('${chat.id}', this)">${chat.title}</div><div class="history-item-actions"><button onclick="deleteChat('${chat.id}')">🗑️</button></div>`;
+                    item.onclick = (e) => { if (e.target.tagName !== 'BUTTON') loadChat(chat.id); };
+                    list.appendChild(item);
+                });
+            });
+        }
+
+        function renameChat(chatId, element) {
+            const newTitle = prompt("Renomear conversa:", element.innerText);
+            if (newTitle) { const chat = chats.find(c => c.id === chatId); chat.title = newTitle; saveChats(); renderHistory(); }
+        }
+
+        function deleteChat(chatId) {
+            if (confirm("Excluir esta conversa?")) {
+                chats = chats.filter(c => c.id !== chatId);
+                if (currentChatId === chatId) loadChat(chats.length > 0 ? chats[0].id : createNewChat().id);
+                saveChats();
+            }
+        }
+
+        function clearAllData() {
+            if (confirm("Apagar TODOS os dados?")) { localStorage.clear(); location.reload(); }
+        }
+
+        const menuBtn = document.getElementById('menu-btn');
+        menuBtn.addEventListener('dblclick', function(e) { e.preventDefault(); window.close(); setTimeout(() => alert("Navegador bloqueou. Feche manualmente."), 100); });
+
+        function goToScreen(screenId) {
+            document.querySelectorAll('.screen.mobile-only').forEach(screen => screen.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function openPcMenu(type) {
+            const content = document.getElementById('pc-menu-content');
+            content.style.display = 'block'; content.innerHTML = ''; 
+            if (type === 'key') content.innerHTML = `<p style="color: white; text-align: center; margin-bottom: 10px;">Chave API</p><input type="password" id="pc-api-key" class="input-chave" placeholder="gsk_..." value="${apiKey}"><button class="menu-btn" onclick="savePcKey()">Salvar</button>`;
+            else if (type === 'models') {
+                content.innerHTML = `<p style="color: white; text-align: center; margin-bottom: 10px;">Modelos</p>`;
+                MODELS.forEach(model => {
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn' + (currentModel === model.id ? ' active' : '');
+                    btn.innerText = model.name; btn.style.marginBottom = '5px';
+                    btn.onclick = () => setModel(model.id);
+                    content.appendChild(btn);
+                });
+            }
+        }
+
+        function saveKey() {
+            const input = document.getElementById('api-key-input').value.trim();
+            if (input) { apiKey = input; localStorage.setItem('groq_api_key', apiKey); document.getElementById('status-key').innerText = "Chave salva!"; setTimeout(() => goToScreen('screen-chat'), 800); }
+            else { document.getElementById('status-key').innerText = "Chave inválida."; document.getElementById('status-key').style.color = "red"; }
+        }
+
+        function savePcKey() {
+            const input = document.getElementById('pc-api-key').value.trim();
+            if (input) { apiKey = input; localStorage.setItem('groq_api_key', apiKey); alert("Chave salva!"); } else alert("Chave inválida!");
+        }
+
+        function setModel(modelId) {
+            currentModel = modelId;
+            const chat = chats.find(c => c.id === currentChatId);
+            if (chat) { chat.model = modelId; saveChats(); }
+            updateStatus();
+            if (window.innerWidth < 1024) goToScreen('screen-chat'); else openPcMenu('models'); 
+        }
+
+        function updateStatus() {
+            const status = document.getElementById('status-model');
+            if (status) status.innerText = "Modelo: " + currentModel;
+            if (window.innerWidth >= 1024) document.querySelectorAll('#pc-menu-content .menu-btn').forEach(btn => btn.classList.toggle('active', btn.innerText.includes(currentModel)));
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const userText = input.value.trim();
+            if (!userText) return;
+            if (!apiKey) { alert("Configure sua Chave Groq!"); if (window.innerWidth < 1024) goToScreen('screen-key'); else openPcMenu('key'); return; }
+
+            input.value = '';
+            addMessage(userText, 'user');
+
+            const chat = chats.find(c => c.id === currentChatId);
+            if (chat) {
+                chat.messages.push({ role: 'user', content: userText });
+                if (chat.title === "Nova Conversa") chat.title = userText.substring(0, 30) + (userText.length > 30 ? "..." : "");
+                saveChats(); renderHistory();
+            }
+
+            const thinkingMsg = addMessage('Digitando...', 'bot thinking');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({ model: currentModel, messages: chat.messages })
+                });
+
+                if (!response.ok) throw new Error((await response.json()).error.message || "Erro na API");
+
+                const data = await response.json();
+                const botReply = data.choices[0].message.content;
+
+                // Remove o "Digitando..." e insere o conteúdo correto
+                thinkingMsg.classList.remove('thinking');
+                thinkingMsg.innerHTML = '';
+                thinkingMsg.appendChild(renderMessageContent(botReply, 'bot'));
+
+                if (chat) { chat.messages.push({ role: 'assistant', content: botReply }); saveChats(); renderHistory(); }
+
+            } catch (error) {
+                thinkingMsg.classList.remove('thinking');
+                thinkingMsg.style.color = 'red';
+                thinkingMsg.innerText = "Erro: " + error.message;
+            }
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+
+        const mobileList = document.getElementById('mobile-model-list');
+        MODELS.forEach(model => {
+            const btn = document.createElement('button');
+            btn.className = 'menu-btn' + (currentModel === model.id ? ' active' : '');
+            btn.innerText = model.name; btn.style.marginBottom = '5px';
+            btn.onclick = () => { setModel(model.id); document.querySelectorAll('#mobile-model-list .menu-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); };
+            mobileList.appendChild(btn);
+        });
+
+        initializeChats();
+        updateStatus();
+    </script>
+</body>
+</html>
