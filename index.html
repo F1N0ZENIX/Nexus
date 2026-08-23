@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Nexus AI - Groq</title>
     <style>
-        /* Reset total para Full Screen */
+        /* Reset total */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         
         html, body { 
@@ -15,16 +15,16 @@
             overflow: hidden; 
         }
 
-        /* Container Full Screen */
+        /* Container Full Screen (dvh garante altura correta em navegadores mobile) */
         .app-container {
             width: 100vw;
-            height: 100vh;
+            height: 100dvh;
             background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%);
             display: flex;
             flex-direction: column;
         }
 
-        /* Cabeçalho */
+        /* Cabeçalho (não encolhe) */
         header {
             background: rgba(18, 18, 18, 0.95);
             backdrop-filter: blur(10px);
@@ -34,6 +34,7 @@
             align-items: center;
             border-bottom: 1px solid #222;
             z-index: 10;
+            flex-shrink: 0;
         }
 
         .logo { color: #ccc; font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
@@ -44,7 +45,7 @@
         .icon-btn { background: #2a2a2a; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
         .icon-btn:hover, .icon-btn:active { background: #7b79ff; color: white; }
 
-        /* Área do Chat */
+        /* Área do Chat (ocupa todo o espaço restante e rola) */
         .chat-area {
             flex: 1;
             overflow-y: auto;
@@ -53,7 +54,7 @@
             flex-direction: column;
             gap: 15px;
             scroll-behavior: smooth;
-            max-width: 900px; /* Limite para leitura confortável no PC */
+            max-width: 900px;
             width: 100%;
             margin: 0 auto;
         }
@@ -149,13 +150,14 @@
             overflow-y: auto;
         }
 
-        /* Input */
+        /* Input (nunca encolhe) */
         .input-area {
             background: #121212;
-            padding: 20px;
+            padding: 15px 20px;
             border-top: 1px solid #222;
             display: flex;
             justify-content: center;
+            flex-shrink: 0;
         }
 
         .input-wrapper {
@@ -181,7 +183,7 @@
 
         .input-wrapper input::placeholder { color: #555; }
 
-        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 12px rgba(123, 121, 255, 0.4); }
+        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 12px rgba(123, 121, 255, 0.4); flex-shrink: 0; }
         .btn-send:hover, .btn-send:active { background: #5e5ce6; transform: scale(1.05); }
 
         /* Modal (Menu Mobile) */
@@ -190,7 +192,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 100dvh;
             background: #0d0d0d;
             z-index: 100;
             display: none;
@@ -210,6 +212,7 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #222;
+            flex-shrink: 0;
         }
 
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; max-width: 500px; margin: 0 auto; width: 100%; }
@@ -255,17 +258,20 @@
             </div>
         </header>
 
+        <!-- Área de Conversa -->
         <main class="chat-area" id="chat-area">
             <div class="msg bot">Olá, eu sou a Nexus, como posso ajudar? 👋</div>
         </main>
 
+        <!-- Área de Input (Corrigida e Sempre Visível) -->
         <footer class="input-area">
             <div class="input-wrapper">
-                <input type="text" id="user-input" placeholder="Digite sua mensagem...">
+                <input type="text" id="user-input" placeholder="Digite sua mensagem..." autocomplete="off">
                 <button class="btn-send" onclick="sendMessage()">↑</button>
             </div>
         </footer>
 
+        <!-- Menu (Modal) -->
         <div class="modal" id="menu-modal">
             <div class="modal-header">
                 <div class="logo" style="font-size: 20px;"><span class="icon-logo">⌃</span> Configurações</div>
@@ -279,7 +285,7 @@
 
                 <div id="sub-screen-key" style="display: none; margin-top: 20px;">
                     <p style="color: white; margin-bottom: 10px;">Insira sua Chave Groq:</p>
-                    <input type="password" id="api-key-input" class="input-wrapper" style="padding: 15px; width: 100%; color: white;" placeholder="gsk_...">
+                    <input type="password" id="api-key-input" class="input-wrapper" style="padding: 15px; width: 100%; color: white; border-radius: 10px;" placeholder="gsk_...">
                     <button class="menu-btn" onclick="saveKey()" style="margin-top: 10px; justify-content: center;">Salvar</button>
                     <p id="status-key" style="color: #7b79ff; font-size: 12px; text-align: center; margin-top: 10px;"></p>
                 </div>
