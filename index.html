@@ -3,36 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus AI</title>
+    <title>Nexus AI - Groq</title>
     <style>
-        /* Reset e Fonte */
+        /* Reset total para Full Screen */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        body { 
+        html, body { 
+            width: 100%; 
+            height: 100%; 
             background-color: #0d0d0d; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
             overflow: hidden; 
         }
 
-        /* Container Principal (Celular) */
+        /* Container Full Screen */
         .app-container {
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%);
-            position: relative;
             display: flex;
             flex-direction: column;
-            max-width: 600px; /* Limite para tablets */
         }
 
-        /* Cabeçalho Fixo */
+        /* Cabeçalho */
         header {
             background: rgba(18, 18, 18, 0.95);
             backdrop-filter: blur(10px);
-            padding: 20px;
+            padding: 15px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -44,7 +40,6 @@
         .icon-logo { font-size: 28px; color: #7b79ff; transform: rotate(-45deg); }
         .ai-text { color: #7b79ff; }
 
-        /* Botões do Header */
         .header-actions { display: flex; gap: 10px; }
         .icon-btn { background: #2a2a2a; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
         .icon-btn:hover, .icon-btn:active { background: #7b79ff; color: white; }
@@ -53,14 +48,17 @@
         .chat-area {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
             gap: 15px;
             scroll-behavior: smooth;
+            max-width: 900px; /* Limite para leitura confortável no PC */
+            width: 100%;
+            margin: 0 auto;
         }
 
-        /* Balões de Mensagem */
+        /* Mensagens */
         .msg {
             max-width: 85%;
             padding: 12px 16px;
@@ -102,7 +100,7 @@
             padding-left: 0;
         }
 
-        /* Bloco de Código (Estilo moderno) */
+        /* Código */
         .code-block {
             width: 100%;
             margin-top: 10px;
@@ -151,18 +149,18 @@
             overflow-y: auto;
         }
 
-        /* Área de Input */
+        /* Input */
         .input-area {
             background: #121212;
-            padding: 15px;
+            padding: 20px;
             border-top: 1px solid #222;
             display: flex;
-            align-items: center;
-            gap: 10px;
+            justify-content: center;
         }
 
-        .input-box {
-            flex: 1;
+        .input-wrapper {
+            width: 100%;
+            max-width: 900px;
             background: #1e1e1e;
             border-radius: 30px;
             display: flex;
@@ -171,24 +169,24 @@
             border: 1px solid #2a2a2a;
         }
 
-        .input-box input {
+        .input-wrapper input {
             flex: 1;
             background: transparent;
             border: none;
             color: white;
-            padding: 10px 0;
+            padding: 12px 0;
             outline: none;
             font-size: 15px;
         }
 
-        .input-box input::placeholder { color: #555; }
+        .input-wrapper input::placeholder { color: #555; }
 
-        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 38px; height: 38px; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 12px rgba(123, 121, 255, 0.4); }
+        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 12px rgba(123, 121, 255, 0.4); }
         .btn-send:hover, .btn-send:active { background: #5e5ce6; transform: scale(1.05); }
 
-        /* Modal / Menu Mobile */
+        /* Modal (Menu Mobile) */
         .modal {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -214,7 +212,7 @@
             border-bottom: 1px solid #222;
         }
 
-        .modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; max-width: 500px; margin: 0 auto; width: 100%; }
 
         .menu-btn {
             background: #1e1e1e;
@@ -236,7 +234,7 @@
         .menu-btn.danger { color: #ff6b6b; }
         .menu-btn.danger:hover { background: #ff6b6b; color: white; }
 
-        /* Histórico dentro do Modal */
+        /* Histórico */
         .history-section { margin-top: 20px; border-top: 1px solid #222; padding-top: 20px; }
         .history-item { background: #1a1a1a; border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer; color: #ccc; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         .history-item:hover, .history-item.active { background: #252525; border: 1px solid #7b79ff; }
@@ -248,7 +246,6 @@
 
     <div class="app-container">
         
-        <!-- Cabeçalho Principal -->
         <header>
             <div class="logo">
                 <span class="icon-logo">⌃</span> NEXUS <span class="ai-text">AI</span>
@@ -258,20 +255,17 @@
             </div>
         </header>
 
-        <!-- Área de Conversa -->
         <main class="chat-area" id="chat-area">
             <div class="msg bot">Olá, eu sou a Nexus, como posso ajudar? 👋</div>
         </main>
 
-        <!-- Input de Mensagem -->
         <footer class="input-area">
-            <div class="input-box">
+            <div class="input-wrapper">
                 <input type="text" id="user-input" placeholder="Digite sua mensagem...">
+                <button class="btn-send" onclick="sendMessage()">↑</button>
             </div>
-            <button class="btn-send" onclick="sendMessage()">↑</button>
         </footer>
 
-        <!-- Menu Lateral (Modal Mobile) -->
         <div class="modal" id="menu-modal">
             <div class="modal-header">
                 <div class="logo" style="font-size: 20px;"><span class="icon-logo">⌃</span> Configurações</div>
@@ -283,10 +277,9 @@
                 <button class="menu-btn" onclick="goToScreen('models')">🧠 Escolher Modelo</button>
                 <button class="menu-btn danger" onclick="clearAllData()">🗑️ Apagar Dados</button>
 
-                <!-- Sub-telas do Modal -->
                 <div id="sub-screen-key" style="display: none; margin-top: 20px;">
                     <p style="color: white; margin-bottom: 10px;">Insira sua Chave Groq:</p>
-                    <input type="password" id="api-key-input" class="input-box" style="padding: 15px; width: 100%; color: white;" placeholder="gsk_...">
+                    <input type="password" id="api-key-input" class="input-wrapper" style="padding: 15px; width: 100%; color: white;" placeholder="gsk_...">
                     <button class="menu-btn" onclick="saveKey()" style="margin-top: 10px; justify-content: center;">Salvar</button>
                     <p id="status-key" style="color: #7b79ff; font-size: 12px; text-align: center; margin-top: 10px;"></p>
                 </div>
@@ -296,7 +289,6 @@
                     <div id="mobile-model-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
 
-                <!-- Histórico -->
                 <div class="history-section">
                     <p style="color: white; font-weight: bold; margin-bottom: 10px;">Conversas:</p>
                     <button class="menu-btn" onclick="createNewChat()" style="justify-content: center; background: #7b79ff;">+ Nova Conversa</button>
@@ -308,12 +300,10 @@
     </div>
 
     <script>
-        // Configuração
         const API_URL = "https://api.groq.com/openai/v1/chat/completions";
         let apiKey = localStorage.getItem('groq_api_key') || '';
         let currentModel = 'openai/gpt-oss-20b';
         
-        // Modelos sem Llama
         const MODELS = [
             { id: 'openai/gpt-oss-20b', name: 'OpenAI GPT-OSS 20B' },
             { id: 'openai/gpt-oss-120b', name: 'OpenAI GPT-OSS 120B' },
@@ -324,11 +314,9 @@
             { id: 'gemma2-9b-it', name: 'Gemma 2 9B' }
         ];
 
-        // Histórico
         let chats = JSON.parse(localStorage.getItem('nexus_chats')) || [];
         let currentChatId = localStorage.getItem('nexus_current_chat') || null;
 
-        // Funções de UI
         function toggleModal(open) {
             const modal = document.getElementById('menu-modal');
             if (open) modal.classList.add('open');
@@ -343,8 +331,7 @@
             if (screen === 'models') document.getElementById('sub-screen-models').style.display = 'block';
         }
 
-        // Renderização de Código
-        function renderMessageContent(content, type) {
+        function renderMessageContent(content) {
             const parts = content.split(/(```[\s\S]*?```)/g);
             const container = document.createElement('div');
             container.style.width = '100%';
@@ -397,7 +384,7 @@
             const msgDiv = document.createElement('div');
             msgDiv.className = 'msg ' + type;
             
-            if (type === 'bot') msgDiv.appendChild(renderMessageContent(content, type));
+            if (type === 'bot') msgDiv.appendChild(renderMessageContent(content));
             else msgDiv.textContent = content;
 
             chatArea.appendChild(msgDiv);
@@ -405,7 +392,6 @@
             return msgDiv;
         }
 
-        // Histórico de Chats
         function initializeChats() {
             if (chats.length === 0 || !currentChatId) createNewChat();
             else { loadChat(currentChatId); renderHistory(); }
@@ -490,7 +476,6 @@
             if (confirm("Apagar TODOS os dados?")) { localStorage.clear(); location.reload(); }
         }
 
-        // Salvar Chave
         function saveKey() {
             const input = document.getElementById('api-key-input').value.trim();
             if (input) {
@@ -504,20 +489,13 @@
             }
         }
 
-        // Selecionar Modelo
         function setModel(modelId) {
             currentModel = modelId;
             const chat = chats.find(c => c.id === currentChatId);
             if (chat) { chat.model = modelId; saveChats(); }
-            
-            // Atualiza botões visualmente
-            document.querySelectorAll('#mobile-model-list .menu-btn').forEach(b => b.classList.remove('active'));
-            // (Aqui você pode adicionar lógica para marcar o botão ativo se quiser)
-            
             toggleModal(false);
         }
 
-        // Inicializar lista de modelos no Modal
         const mobileList = document.getElementById('mobile-model-list');
         MODELS.forEach(model => {
             const btn = document.createElement('button');
@@ -527,7 +505,6 @@
             mobileList.appendChild(btn);
         });
 
-        // Lógica do Chat
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const userText = input.value.trim();
@@ -568,7 +545,7 @@
 
                 thinkingMsg.classList.remove('thinking');
                 thinkingMsg.innerHTML = '';
-                thinkingMsg.appendChild(renderMessageContent(botReply, 'bot'));
+                thinkingMsg.appendChild(renderMessageContent(botReply));
 
                 if (chat) { chat.messages.push({ role: 'assistant', content: botReply }); saveChats(); renderHistory(); }
 
@@ -583,7 +560,6 @@
             if (e.key === 'Enter') sendMessage();
         });
 
-        // Iniciar
         initializeChats();
     </script>
 </body>
