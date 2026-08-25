@@ -2,243 +2,71 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus AI - Groq</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus AI</title>
+    <!-- Biblioteca para transformar Markdown em HTML bonito -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* Reset total */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        html, body { width: 100%; height: 100%; background-color: #0d0d0d; overflow: hidden; }
         
-        html, body { 
-            width: 100%; 
-            height: 100%; 
-            background-color: #0d0d0d; 
-            overflow: hidden; 
-        }
-
-        /* Container Full Screen (dvh garante altura correta em navegadores mobile) */
-        .app-container {
-            width: 100vw;
-            height: 100dvh;
-            background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%);
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Cabeçalho (não encolhe) */
-        header {
-            background: rgba(18, 18, 18, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #222;
-            z-index: 10;
-            flex-shrink: 0;
-        }
-
+        .app-container { width: 100vw; height: 100dvh; background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%); display: flex; flex-direction: column; }
+        
+        header { background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(10px); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; flex-shrink: 0; }
         .logo { color: #ccc; font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
         .icon-logo { font-size: 28px; color: #7b79ff; transform: rotate(-45deg); }
         .ai-text { color: #7b79ff; }
-
         .header-actions { display: flex; gap: 10px; }
-        .icon-btn { background: #2a2a2a; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
-        .icon-btn:hover, .icon-btn:active { background: #7b79ff; color: white; }
-
-        /* Área do Chat (ocupa todo o espaço restante e rola) */
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            scroll-behavior: smooth;
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        /* Mensagens */
-        .msg {
-            max-width: 85%;
-            padding: 12px 16px;
-            font-size: 15px;
-            line-height: 1.5;
-            word-wrap: break-word;
-            border-radius: 18px;
-            animation: popIn 0.3s ease-out;
-        }
-
-        @keyframes popIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .msg.user {
-            align-self: flex-end;
-            background: linear-gradient(135deg, #7b79ff, #5e5ce6);
-            color: white;
-            border-bottom-right-radius: 4px;
-            box-shadow: 0 4px 15px rgba(123, 121, 255, 0.3);
-        }
-
-        .msg.bot {
-            align-self: flex-start;
-            background: #1e1e1e;
-            color: #ddd;
-            border: 1px solid #2a2a2a;
-            border-bottom-left-radius: 4px;
-            max-width: 95%;
-            width: fit-content;
-        }
-
-        .msg.thinking {
-            color: #888;
-            font-style: italic;
-            background: transparent;
-            border: none;
-            padding-left: 0;
-        }
-
-        /* Código */
-        .code-block {
-            width: 100%;
-            margin-top: 10px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            overflow: hidden;
-        }
+        .icon-btn { background: #2a2a2a; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        .icon-btn:hover { background: #7b79ff; }
         
-        .code-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-            font-size: 12px;
-            color: #8b949e;
-            font-weight: bold;
-        }
-
-        .copy-btn {
-            background: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 4px 10px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 500;
-            transition: 0.2s;
-        }
-
-        .copy-btn:hover, .copy-btn:active { background: #7b79ff; border-color: #7b79ff; color: white; }
-        .copy-btn.copied { background: #238636; border-color: #238636; color: white; }
-
-        pre {
-            margin: 0;
-            padding: 15px;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 13px;
-            color: #c9d1d9;
-            white-space: pre;
-            overflow-x: auto;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        /* Input (nunca encolhe) */
-        .input-area {
-            background: #121212;
-            padding: 15px 20px;
-            border-top: 1px solid #222;
-            display: flex;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .input-wrapper {
-            width: 100%;
-            max-width: 900px;
-            background: #1e1e1e;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            padding: 5px 15px;
-            border: 1px solid #2a2a2a;
-        }
-
-        .input-wrapper input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: white;
-            padding: 12px 0;
-            outline: none;
-            font-size: 15px;
-        }
-
-        .input-wrapper input::placeholder { color: #555; }
-
-        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; box-shadow: 0 4px 12px rgba(123, 121, 255, 0.4); flex-shrink: 0; }
-        .btn-send:hover, .btn-send:active { background: #5e5ce6; transform: scale(1.05); }
-
-        /* Modal (Menu Mobile) */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100dvh;
-            background: #0d0d0d;
-            z-index: 100;
-            display: none;
-            flex-direction: column;
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-
-        .modal.open {
-            display: flex;
-            transform: translateX(0);
-        }
-
-        .modal-header {
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #222;
-            flex-shrink: 0;
-        }
-
-        .modal-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; max-width: 500px; margin: 0 auto; width: 100%; }
-
-        .menu-btn {
-            background: #1e1e1e;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            text-align: left;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: 0.2s;
-        }
-
-        .menu-btn:hover, .menu-btn.active { background: #7b79ff; }
+        .chat-area { flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; max-width: 900px; width: 100%; margin: 0 auto; }
+        
+        /* Mensagens e Markdown */
+        .msg { max-width: 90%; padding: 12px 16px; font-size: 15px; line-height: 1.6; word-wrap: break-word; border-radius: 18px; animation: popIn 0.3s ease-out; }
+        @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .msg.user { align-self: flex-end; background: linear-gradient(135deg, #7b79ff, #5e5ce6); color: white; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(123, 121, 255, 0.3); white-space: pre-wrap; }
+        
+        /* Estilo do Conteúdo Markdown (Bot) */
+        .msg.bot { align-self: flex-start; background: #1e1e1e; color: #ddd; border: 1px solid #2a2a2a; border-bottom-left-radius: 4px; width: 100%; }
+        .msg.thinking { color: #888; font-style: italic; background: transparent; border: none; }
+        
+        /* Tabelas, Listas e Negrito dentro do Markdown */
+        .msg.bot table { border-collapse: collapse; width: 100%; margin: 10px 0; display: block; overflow-x: auto; }
+        .msg.bot th, .msg.bot td { border: 1px solid #555; padding: 8px 12px; text-align: left; }
+        .msg.bot th { background-color: #333; color: white; }
+        .msg.bot tr:nth-child(even) { background-color: #2a2a2a; }
+        
+        .msg.bot strong { color: #fff; }
+        .msg.bot ul, .msg.bot ol { padding-left: 25px; margin: 10px 0; }
+        .msg.bot p { margin-bottom: 10px; }
+        .msg.bot a { color: #7b79ff; }
+        
+        /* Bloco de Código */
+        .code-block { margin-top: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; }
+        .code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #161b22; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e; font-weight: bold; }
+        .copy-btn { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+        .copy-btn:hover { background: #7b79ff; color: white; }
+        .copy-btn.copied { background: #238636; color: white; }
+        pre { margin: 0; padding: 15px; font-family: 'Consolas', monospace; font-size: 13px; color: #c9d1d9; white-space: pre; overflow-x: auto; }
+        
+        .input-area { background: #121212; padding: 15px 20px; border-top: 1px solid #222; display: flex; justify-content: center; flex-shrink: 0; }
+        .input-wrapper { width: 100%; max-width: 900px; background: #1e1e1e; border-radius: 30px; display: flex; align-items: center; padding: 5px 15px; border: 1px solid #2a2a2a; }
+        .input-wrapper input { flex: 1; background: transparent; border: none; color: white; padding: 12px 0; outline: none; font-size: 15px; }
+        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; }
+        
+        /* Menu Modal */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: #0d0d0d; z-index: 100; display: none; flex-direction: column; transform: translateX(100%); transition: transform 0.3s; }
+        .modal.open { display: flex; transform: translateX(0); }
+        .modal-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
+        .modal-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; }
+        .menu-btn { background: #1e1e1e; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: left; width: 100%; margin-bottom: 10px; }
+        .menu-btn:hover { background: #7b79ff; }
         .menu-btn.danger { color: #ff6b6b; }
         .menu-btn.danger:hover { background: #ff6b6b; color: white; }
-
-        /* Histórico */
-        .history-section { margin-top: 20px; border-top: 1px solid #222; padding-top: 20px; }
+        .input-chave { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 15px; color: white; width: 100%; margin-bottom: 15px; outline: none; }
+        
         .history-item { background: #1a1a1a; border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer; color: #ccc; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
         .history-item:hover, .history-item.active { background: #252525; border: 1px solid #7b79ff; }
         .history-item .delete { background: transparent; border: none; color: #666; cursor: pointer; }
@@ -248,64 +76,51 @@
 <body>
 
     <div class="app-container">
-        
         <header>
-            <div class="logo">
-                <span class="icon-logo">⌃</span> NEXUS <span class="ai-text">AI</span>
-            </div>
-            <div class="header-actions">
-                <button class="icon-btn" onclick="toggleModal(true)">☰</button>
-            </div>
+            <div class="logo"><span class="icon-logo">⌃</span> NEXUS <span class="ai-text">AI</span></div>
+            <div class="header-actions"><button class="icon-btn" onclick="toggleModal(true)">☰</button></div>
         </header>
-
-        <!-- Área de Conversa -->
-        <main class="chat-area" id="chat-area">
-            <div class="msg bot">Olá, eu sou a Nexus, como posso ajudar? 👋</div>
-        </main>
-
-        <!-- Área de Input (Corrigida e Sempre Visível) -->
+        
+        <main class="chat-area" id="chat-area"></main>
+        
         <footer class="input-area">
             <div class="input-wrapper">
-                <input type="text" id="user-input" placeholder="Digite sua mensagem..." autocomplete="off">
+                <input type="text" id="user-input" placeholder="Digite sua mensagem...">
                 <button class="btn-send" onclick="sendMessage()">↑</button>
             </div>
         </footer>
 
-        <!-- Menu (Modal) -->
         <div class="modal" id="menu-modal">
             <div class="modal-header">
                 <div class="logo" style="font-size: 20px;"><span class="icon-logo">⌃</span> Configurações</div>
                 <button class="icon-btn" onclick="toggleModal(false)">✕</button>
             </div>
-            
             <div class="modal-body">
                 <button class="menu-btn" onclick="goToScreen('key')">🔑 Chave API</button>
                 <button class="menu-btn" onclick="goToScreen('models')">🧠 Escolher Modelo</button>
                 <button class="menu-btn danger" onclick="clearAllData()">🗑️ Apagar Dados</button>
-
-                <div id="sub-screen-key" style="display: none; margin-top: 20px;">
-                    <p style="color: white; margin-bottom: 10px;">Insira sua Chave Groq:</p>
-                    <input type="password" id="api-key-input" class="input-wrapper" style="padding: 15px; width: 100%; color: white; border-radius: 10px;" placeholder="gsk_...">
-                    <button class="menu-btn" onclick="saveKey()" style="margin-top: 10px; justify-content: center;">Salvar</button>
-                    <p id="status-key" style="color: #7b79ff; font-size: 12px; text-align: center; margin-top: 10px;"></p>
+                
+                <div id="sub-screen-key" style="display: none;">
+                    <input type="password" id="api-key-input" class="input-chave" placeholder="gsk_...">
+                    <button class="menu-btn" onclick="saveKey()">Salvar</button>
+                    <p id="status-key" style="color: #7b79ff; font-size: 12px; text-align: center;"></p>
                 </div>
 
-                <div id="sub-screen-models" style="display: none; margin-top: 20px;">
-                    <p style="color: white; margin-bottom: 10px;">Selecione o Modelo:</p>
-                    <div id="mobile-model-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                <div id="sub-screen-models" style="display: none;">
+                    <div id="mobile-model-list"></div>
                 </div>
 
-                <div class="history-section">
+                <div style="margin-top: 20px; border-top: 1px solid #222; padding-top: 20px;">
                     <p style="color: white; font-weight: bold; margin-bottom: 10px;">Conversas:</p>
-                    <button class="menu-btn" onclick="createNewChat()" style="justify-content: center; background: #7b79ff;">+ Nova Conversa</button>
-                    <div id="mobile-history-list" style="margin-top: 10px;"></div>
+                    <button class="menu-btn" onclick="createNewChat()" style="text-align: center; background: #7b79ff;">+ Nova Conversa</button>
+                    <div id="mobile-history-list"></div>
                 </div>
             </div>
         </div>
-
     </div>
 
     <script>
+        // Configuração
         const API_URL = "https://api.groq.com/openai/v1/chat/completions";
         let apiKey = localStorage.getItem('groq_api_key') || '';
         let currentModel = 'openai/gpt-oss-20b';
@@ -323,6 +138,12 @@
         let chats = JSON.parse(localStorage.getItem('nexus_chats')) || [];
         let currentChatId = localStorage.getItem('nexus_current_chat') || null;
 
+        // Inicializar Marked (configuração para segurança)
+        marked.setOptions({
+            breaks: true, // Quebras de linha viram <br>
+            gfm: true     // Suporte a tabelas
+        });
+
         function toggleModal(open) {
             const modal = document.getElementById('menu-modal');
             if (open) modal.classList.add('open');
@@ -332,21 +153,21 @@
         function goToScreen(screen) {
             document.getElementById('sub-screen-key').style.display = 'none';
             document.getElementById('sub-screen-models').style.display = 'none';
-
             if (screen === 'key') document.getElementById('sub-screen-key').style.display = 'block';
             if (screen === 'models') document.getElementById('sub-screen-models').style.display = 'block';
         }
 
-        function renderMessageContent(content) {
-            const parts = content.split(/(```[\s\S]*?```)/g);
+        // Renderizar Markdown com blocos de código
+        function renderMarkdown(text) {
+            // Divide em partes de código e texto
+            const parts = text.split(/(```[\s\S]*?```)/g);
             const container = document.createElement('div');
-            container.style.width = '100%';
 
             parts.forEach(part => {
                 if (part.startsWith('```') && part.endsWith('```')) {
-                    const firstLineEnd = part.indexOf('\n');
-                    const lang = part.substring(3, firstLineEnd).trim() || 'código';
-                    const code = part.substring(firstLineEnd + 1, part.length - 3);
+                    const lines = part.split('\n');
+                    const lang = lines[0].replace('```', '').trim() || 'código';
+                    const code = lines.slice(1, -1).join('\n');
 
                     const codeBlock = document.createElement('div');
                     codeBlock.className = 'code-block';
@@ -364,21 +185,20 @@
                             copyBtn.innerText = 'Copiado!';
                             copyBtn.classList.add('copied');
                             setTimeout(() => { copyBtn.innerText = 'Copiar'; copyBtn.classList.remove('copied'); }, 2000);
-                        } catch (e) { alert('Erro ao copiar'); }
+                        } catch (e) {}
                     };
                     header.appendChild(copyBtn);
 
                     const pre = document.createElement('pre');
                     pre.textContent = code;
-
                     codeBlock.appendChild(header);
                     codeBlock.appendChild(pre);
                     container.appendChild(codeBlock);
                 } else {
-                    const textDiv = document.createElement('div');
-                    textDiv.style.whiteSpace = 'pre-wrap';
-                    textDiv.textContent = part;
-                    container.appendChild(textDiv);
+                    // Converte texto normal para HTML usando Marked
+                    const div = document.createElement('div');
+                    div.innerHTML = marked.parse(part);
+                    container.appendChild(div);
                 }
             });
 
@@ -390,14 +210,18 @@
             const msgDiv = document.createElement('div');
             msgDiv.className = 'msg ' + type;
             
-            if (type === 'bot') msgDiv.appendChild(renderMessageContent(content));
-            else msgDiv.textContent = content;
+            if (type === 'bot') {
+                msgDiv.appendChild(renderMarkdown(content));
+            } else {
+                msgDiv.textContent = content;
+            }
 
             chatArea.appendChild(msgDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
             return msgDiv;
         }
 
+        // Histórico
         function initializeChats() {
             if (chats.length === 0 || !currentChatId) createNewChat();
             else { loadChat(currentChatId); renderHistory(); }
@@ -423,24 +247,19 @@
             if (!chat) return;
             currentChatId = chatId;
             currentModel = chat.model;
-
             const chatArea = document.getElementById('chat-area');
             chatArea.innerHTML = ''; 
-            
             chat.messages.forEach(msg => addMessage(msg.content, msg.role === 'user' ? 'user' : 'bot'));
             if (chat.messages.length === 0) addMessage("Olá, eu sou a Nexus, como posso ajudar? 👋", 'bot');
-            
             renderHistory(); 
         }
 
         function renderHistory() {
             const list = document.getElementById('mobile-history-list');
             list.innerHTML = '';
-
             chats.forEach(chat => {
                 const item = document.createElement('div');
                 item.className = 'history-item' + (chat.id === currentChatId ? ' active' : '');
-                
                 const titleDiv = document.createElement('div');
                 titleDiv.style.flex = '1';
                 titleDiv.style.overflow = 'hidden';
@@ -448,12 +267,10 @@
                 titleDiv.style.whiteSpace = 'nowrap';
                 titleDiv.innerText = chat.title;
                 titleDiv.ondblclick = () => renameChat(chat.id);
-
                 const delBtn = document.createElement('button');
                 delBtn.className = 'delete';
                 delBtn.innerText = '🗑️';
                 delBtn.onclick = (e) => { e.stopPropagation(); deleteChat(chat.id); };
-
                 item.onclick = () => loadChat(chat.id);
                 item.appendChild(titleDiv);
                 item.appendChild(delBtn);
@@ -489,9 +306,6 @@
                 localStorage.setItem('groq_api_key', apiKey);
                 document.getElementById('status-key').innerText = "✅ Chave salva!";
                 setTimeout(() => toggleModal(false), 800);
-            } else {
-                document.getElementById('status-key').innerText = "Chave inválida!";
-                document.getElementById('status-key').style.color = "red";
             }
         }
 
@@ -514,15 +328,8 @@
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const userText = input.value.trim();
-
             if (!userText) return;
-
-            if (!apiKey) {
-                alert("Você precisa configurar sua Chave API da Groq!");
-                toggleModal(true);
-                goToScreen('key');
-                return;
-            }
+            if (!apiKey) { alert("Configure sua Chave API!"); toggleModal(true); goToScreen('key'); return; }
 
             input.value = '';
             addMessage(userText, 'user');
@@ -551,10 +358,9 @@
 
                 thinkingMsg.classList.remove('thinking');
                 thinkingMsg.innerHTML = '';
-                thinkingMsg.appendChild(renderMessageContent(botReply));
+                thinkingMsg.appendChild(renderMarkdown(botReply));
 
                 if (chat) { chat.messages.push({ role: 'assistant', content: botReply }); saveChats(); renderHistory(); }
-
             } catch (error) {
                 thinkingMsg.classList.remove('thinking');
                 thinkingMsg.style.color = 'red';
