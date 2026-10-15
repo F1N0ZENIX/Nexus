@@ -124,7 +124,7 @@ class MainActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text(config.provider, color = AccentRed, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                Text("MODELO LOCAL", color = AccentRed, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 Text(config.model, color = Ink, fontSize = 13.sp, maxLines = 1)
                             }
                             TextButton(onClick = { showModels = true }) { Text("TROCAR", color = AccentRed, fontSize = 11.sp) }
