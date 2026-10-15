@@ -8,7 +8,7 @@ Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaqu
 - **Seletor por categorias:** modelos leves, equilibrados, para código, Kimi e instalados.
 - **Tamanho dos modelos:** estimativas de armazenamento para modelos locais; o tamanho real dos modelos instalados vem do Ollama.
 - **Gerenciador do Ollama:** lista os modelos instalados, mostra o espaço usado e permite removê-los do servidor.
-- **Modelos Kimi:** Kimi K3, K2.7 Code, K2.7 Code HighSpeed e K2.6 via Moonshot AI.
+- **Modo local privado:** alternativa Qwen3 4B sem API Kimi ou chave de nuvem.
 - **Modelos locais:** presets de Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, CodeLlama, StarCoder e Granite.
 - **Tema:** fundo `#000000`, texto branco e vermelho discreto.
 - **Interface adaptada ao Android:** respeita as barras do sistema e mantém os diálogos roláveis.
@@ -30,9 +30,9 @@ O Nexus conecta-se a um servidor compatível com OpenAI, como Ollama ou LM Studi
 
 **Importante:** os pesos dos modelos não vêm no APK. Esta versão ainda não executa inferência totalmente offline no próprio telefone; utiliza um runtime local acessível pela rede. A opção **Desinstalar** remove o modelo do Ollama remoto conectado, não do app Android. Os tamanhos exibidos no catálogo são estimativas que variam conforme a quantização; na lista Instalados, são usados os tamanhos informados pelo Ollama.
 
-## Modelos Kimi
+## Privacidade e alternativa local ao Kimi
 
-A categoria Kimi oferece `kimi-k3`, `kimi-k2.7-code`, `kimi-k2.7-code-highspeed` e `kimi-k2.6` pelo endpoint compatível com OpenAI da Moonshot AI (`https://api.moonshot.ai/v1`). Insira sua chave na própria categoria Kimi. Esses são modelos em nuvem: não ocupam espaço local e exigem conexão com a internet. Veja o [catálogo oficial da Kimi](https://www.kimi.ai/pt-br/ai-models/).
+A categoria **Kimi Local** não chama a API da Kimi e não pede chave. Ela oferece Qwen3 4B como alternativa leve para uso no servidor local configurado. Os modelos oficiais Kimi disponíveis são enormes e não há uma versão oficial de chat pequena que seja prática para rodar diretamente neste telefone. Há modelos experimentais destilados de 3B, mas alguns são modelos auxiliares de rascunho, não assistentes completos; por isso não são apresentados como se fossem Kimi completo. Para manter as conversas privadas, configure um runtime local e não um endpoint de nuvem.
 
 ## Histórico e privacidade
 
@@ -40,7 +40,7 @@ As conversas ficam no banco privado do app e não são sincronizadas para a nuve
 
 ## Nome das releases
 
-Cada publicação automática aparece no formato **Nexus release XX.XX.XX**, por exemplo `Nexus release 1.0.2`.
+A versão atual é **1.0.3**. Cada publicação aparece no formato **Nexus release XX.XX.XX**, por exemplo `Nexus release 1.0.3`. O workflow cancela builds anteriores em andamento e reutiliza uma única release/tag por versão, para evitar múltiplas atualizações da mesma versão.
 
 ## Instalação e atualização
 
