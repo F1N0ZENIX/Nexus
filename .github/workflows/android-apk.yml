@@ -73,12 +73,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Nexus AI ${{ steps.version.outputs.version }} (build ${{ github.run_number }})
+          name: Nexus release ${{ steps.version.outputs.version }}
           body: |
             Release automática do Nexus AI.
             - Tema AMOLED preto com destaque vermelho suave
             - Histórico de conversas salvo localmente
-            - Seletor pesquisável de modelos locais
+            - Seletor de modelos por categoria, catálogo Kimi e gerenciamento de modelos Ollama
             Para atualizações por cima, configure uma chave de assinatura persistente nos Secrets do repositório.
           files: Nexus-release.apk
           fail_on_unmatched_files: true
