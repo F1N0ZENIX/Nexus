@@ -1,6 +1,7 @@
 package com.f1n0.nexus
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -25,7 +26,7 @@ data class ChatMessage(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val role: String,
     val content: String,
-    val chatId: String = "default",
+    @ColumnInfo(defaultValue = "'default'") val chatId: String = "default",
     val createdAt: Long = System.currentTimeMillis()
 )
 
