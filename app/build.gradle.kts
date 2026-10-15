@@ -13,7 +13,7 @@ android {
         applicationId = "com.f1n0.nexus"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 2
         versionName = "1.0.1"
     }
 
