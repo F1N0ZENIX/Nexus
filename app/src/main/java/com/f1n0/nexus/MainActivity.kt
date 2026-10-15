@@ -435,13 +435,23 @@ class MainActivity : ComponentActivity() {
         val localProvider = "Local / OpenAI-compatible"
         val savedProvider = prefs.getString("provider", "") ?: ""
         val savedModel = prefs.getString("model", "") ?: ""
-        val localModels = setOf("llama3.2", "llama3.1", "qwen2.5:3b", "qwen2.5:7b", "qwen3:4b",
+        val localModels = setOf("llama3.2:1b", "llama3.2", "llama3.1", "qwen2.5:3b", "qwen2.5:7b", "qwen3:4b",
             "deepseek-r1:1.5b", "deepseek-r1:7b", "deepseek-coder-v2:lite", "mistral:7b",
             "mistral-nemo", "gemma3:4b", "phi4-mini", "codellama:7b", "starcoder2:3b", "granite3.3:2b")
+        val kimiModels = setOf("kimi-k3", "kimi-k2.7-code", "kimi-k2.7-code-highspeed", "kimi-k2.6")
+        if (savedProvider == "Kimi" && savedModel in kimiModels) {
+            return ProviderConfig(
+                provider = "Kimi",
+                apiKey = prefs.getString("key_Kimi", "") ?: "",
+                baseUrl = "https://api.moonshot.ai/v1",
+                model = savedModel,
+                claudeCodeUrl = ""
+            )
+        }
         return ProviderConfig(
             provider = localProvider,
             apiKey = "",
-            baseUrl = if (savedProvider == localProvider) prefs.getString("baseUrl", "http://10.0.2.2:11434/v1") ?: "http://10.0.2.2:11434/v1" else "http://10.0.2.2:11434/v1",
+            baseUrl = prefs.getString("localEndpoint", "http://10.0.2.2:11434/v1") ?: "http://10.0.2.2:11434/v1",
             model = if (savedProvider == localProvider && savedModel in localModels) savedModel else "llama3.2",
             claudeCodeUrl = ""
         )
