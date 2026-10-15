@@ -320,13 +320,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun loadConfig(): ProviderConfig = ProviderConfig(
-        provider = prefs.getString("provider", "Local / OpenAI-compatible") ?: "Local / OpenAI-compatible",
-        apiKey = prefs.getString("key_${prefs.getString("provider", "Groq") ?: "Groq"}", prefs.getString("apiKey", "")) ?: "",
-        baseUrl = prefs.getString("baseUrl", "http://10.0.2.2:11434/v1") ?: "",
-        model = prefs.getString("model", "llama3.2") ?: "",
-        claudeCodeUrl = prefs.getString("claudeCodeUrl", "") ?: ""
-    )
+    private fun loadConfig(): ProviderConfig {
+        val localProvider = "Local / OpenAI-compatible"
+        val savedProvider = prefs.getString("provider", "") ?: ""
+        val savedModel = prefs.getString("model", "") ?: ""
+        val localModels = setOf("llama3.2", "llama3.1", "qwen2.5:3b", "qwen2.5:7b", "qwen3:4b",
+            "deepseek-r1:1.5b", "deepseek-r1:7b", "deepseek-coder-v2:lite", "mistral:7b",
+            "mistral-nemo", "gemma3:4b", "phi4-mini", "codellama:7b", "starcoder2:3b", "granite3.3:2b")
+        return ProviderConfig(
+            provider = localProvider,
+            apiKey = "",
+            baseUrl = if (savedProvider == localProvider) prefs.getString("baseUrl", "http://10.0.2.2:11434/v1") ?: "http://10.0.2.2:11434/v1" else "http://10.0.2.2:11434/v1",
+            model = if (savedProvider == localProvider && savedModel in localModels) savedModel else "llama3.2",
+            claudeCodeUrl = ""
+        )
+    }
 
     private fun saveConfig(c: ProviderConfig) {
         prefs.edit().putString("provider", c.provider).putString("apiKey", c.apiKey)
