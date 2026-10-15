@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
@@ -38,9 +39,9 @@ import org.json.JSONObject
 
 private val Bg = Color(0xFF000000)
 private val Panel = Color(0xFF101010)
-private val AccentRed = Color(0xFFFF3030)
+private val AccentRed = Color(0xFFE05252)
 private val Muted = Color(0xFF9BA69E)
-private val Ink = Color(0xFFEAF0EB)
+private val Ink = Color(0xFFFFFFFF)
 
 class MainActivity : ComponentActivity() {
     private lateinit var db: NexusDatabase
@@ -58,6 +59,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             var config by remember { mutableStateOf(loadConfig()) }
             var messages by remember { mutableStateOf(emptyList<ChatMessage>()) }
+            var sessions by remember { mutableStateOf(emptyList<ChatSession>()) }
+            var activeChatId by remember { mutableStateOf("") }
+            var historyOpen by remember { mutableStateOf(false) }
             var prompt by remember { mutableStateOf("") }
             var streaming by remember { mutableStateOf(false) }
             var liveAnswer by remember { mutableStateOf("") }
@@ -65,7 +69,22 @@ class MainActivity : ComponentActivity() {
             var settingsOpen by remember { mutableStateOf(false) }
             var showModels by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
-            LaunchedEffect(Unit) { db.messages().observeAll().collect { messages = it } }
+            LaunchedEffect(Unit) {
+                db.sessions().observeAll().collect { all ->
+                    sessions = all
+                    if (activeChatId.isBlank()) {
+                        if (all.isNotEmpty()) activeChatId = all.first().id
+                        else {
+                            val id = "chat-${System.currentTimeMillis()}"
+                            db.sessions().insert(ChatSession(id, "Nova conversa"))
+                            activeChatId = id
+                        }
+                    } else if (all.isNotEmpty() && all.none { it.id == activeChatId }) activeChatId = all.first().id
+                }
+            }
+            LaunchedEffect(activeChatId) {
+                if (activeChatId.isNotBlank()) db.messages().observeChat(activeChatId).collect { messages = it }
+            }
 
             MaterialTheme(colorScheme = darkColorScheme(
                 primary = AccentRed, onPrimary = Bg, background = Bg, surface = Panel,
@@ -85,11 +104,19 @@ class MainActivity : ComponentActivity() {
                                 Text("NEXUS", fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 17.sp)
                                 Text("AI WORKSPACE", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
                             }
-                            IconButton(onClick = { settingsOpen = true }) {
-                                Icon(Icons.Default.Settings, "Configurações", tint = Ink)
+                            IconButton(onClick = { historyOpen = true }) {
+                                Icon(Icons.Default.History, "Histórico de conversas", tint = Ink)
                             }
-                            IconButton(onClick = { scope.launch { db.messages().clear() } }) {
-                                Icon(Icons.Default.Delete, "Limpar conversa", tint = Muted)
+                            IconButton(onClick = {
+                                scope.launch {
+                                    val id = "chat-${System.currentTimeMillis()}"
+                                    db.sessions().insert(ChatSession(id, "Nova conversa"))
+                                    activeChatId = id
+                                    liveAnswer = ""; error = null
+                                }
+                            }) { Icon(Icons.Default.Add, "Nova conversa", tint = AccentRed) }
+                            IconButton(onClick = { settingsOpen = true }) {
+                                Icon(Icons.Default.Settings, "Preferências", tint = Ink)
                             }
                         }
                         Row(
@@ -148,10 +175,12 @@ class MainActivity : ComponentActivity() {
                                     if (!streaming && prompt.isNotBlank()) {
                                         val send = prompt.trim(); prompt = ""; error = null; liveAnswer = ""; streaming = true
                                         scope.launch {
-                                            db.messages().insert(ChatMessage(role = "user", content = send))
+                                            if (messages.isEmpty()) db.sessions().rename(activeChatId, send.take(36).ifBlank { "Nova conversa" })
+                                            db.sessions().touch(activeChatId)
+                                            db.messages().insert(ChatMessage(role = "user", content = send, chatId = activeChatId))
                                             try {
                                                 val result = AIClient.stream(config, messages, send) { liveAnswer += it }
-                                                db.messages().insert(ChatMessage(role = "assistant", content = result))
+                                                db.messages().insert(ChatMessage(role = "assistant", content = result, chatId = activeChatId))
                                             } catch (e: Exception) {
                                                 error = e.message ?: "Falha ao comunicar com o modelo."
                                             } finally { streaming = false; liveAnswer = "" }
@@ -182,49 +211,112 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            if (showModels) AlertDialog(
-                onDismissRequest = { showModels = false },
-                containerColor = Panel, title = { Text("Modelos", color = Ink) },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(
-                            Triple("Local / OpenAI-compatible", "llama3.2", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "llama3.1", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "qwen2.5:3b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "qwen2.5:7b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "qwen3:4b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "deepseek-r1:1.5b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "deepseek-r1:7b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "deepseek-coder-v2:lite", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "mistral:7b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "mistral-nemo", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "gemma3:4b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "phi4-mini", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "codellama:7b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "starcoder2:3b", "http://10.0.2.2:11434/v1"),
-                            Triple("Local / OpenAI-compatible", "granite3.3:2b", "http://10.0.2.2:11434/v1"),
-                            Triple("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1"),
-                            Triple("Groq", "openai/gpt-oss-120b", "https://api.groq.com/openai/v1"),
-                            Triple("Groq", "qwen/qwen3-32b", "https://api.groq.com/openai/v1"),
-                            Triple("Groq", "moonshotai/kimi-k2-instruct", "https://api.groq.com/openai/v1"),
-                            Triple("Anthropic", "claude-sonnet-4-5", "https://api.anthropic.com/v1"),
-                            Triple("Anthropic", "claude-haiku-4-5", "https://api.anthropic.com/v1"),
-                            Triple("Anthropic", "claude-opus-4-1", "https://api.anthropic.com/v1"),
-                            Triple("OpenAI", "gpt-4o-mini", "https://api.openai.com/v1"),
-                            Triple("Local / OpenAI-compatible", "llama3.2", "http://10.0.2.2:11434/v1")
-                        ).forEach { item ->
-                            TextButton(onClick = {
-                                config = config.copy(
-                                    provider = item.first, model = item.second, baseUrl = item.third,
-                                    apiKey = prefs.getString("key_${item.first}", "") ?: ""
-                                )
-                                saveConfig(config); showModels = false
-                            }) { Text("${item.first}  ·  ${item.second}", color = if (config.model == item.second) AccentRed else Ink) }
+            if (showModels) {
+                var modelSearch by remember { mutableStateOf("") }
+                val options = listOf(
+                    Triple("Local / OpenAI-compatible", "llama3.2", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "llama3.1", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "qwen2.5:3b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "qwen2.5:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "qwen3:4b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "deepseek-r1:1.5b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "deepseek-r1:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "deepseek-coder-v2:lite", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "mistral:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "mistral-nemo", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "gemma3:4b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "phi4-mini", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "codellama:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "starcoder2:3b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local / OpenAI-compatible", "granite3.3:2b", "http://10.0.2.2:11434/v1"),
+                    Triple("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1"),
+                    Triple("Groq", "openai/gpt-oss-120b", "https://api.groq.com/openai/v1"),
+                    Triple("Groq", "qwen/qwen3-32b", "https://api.groq.com/openai/v1"),
+                    Triple("Groq", "moonshotai/kimi-k2-instruct", "https://api.groq.com/openai/v1"),
+                    Triple("Anthropic", "claude-sonnet-4-5", "https://api.anthropic.com/v1"),
+                    Triple("Anthropic", "claude-haiku-4-5", "https://api.anthropic.com/v1"),
+                    Triple("Anthropic", "claude-opus-4-1", "https://api.anthropic.com/v1"),
+                    Triple("OpenAI", "gpt-4o-mini", "https://api.openai.com/v1")
+                ).filter { it.second.contains(modelSearch, ignoreCase = true) || it.first.contains(modelSearch, ignoreCase = true) }
+                AlertDialog(
+                    onDismissRequest = { showModels = false },
+                    containerColor = Panel,
+                    title = { Text("Escolher modelo", color = Color.White, fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+                            OutlinedTextField(
+                                value = modelSearch, onValueChange = { modelSearch = it },
+                                modifier = Modifier.fillMaxWidth(), singleLine = true,
+                                placeholder = { Text("Buscar modelo ou provedor", color = Muted) },
+                                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                items(options) { item ->
+                                    val provider = if (item.first == "Local / OpenAI-compatible") item.first else item.first
+                                    val selected = config.model == item.second && config.provider == provider
+                                    Surface(
+                                        onClick = {
+                                            config = config.copy(provider = provider, model = item.second, baseUrl = item.third, apiKey = prefs.getString("key_$provider", "") ?: "")
+                                            saveConfig(config); showModels = false
+                                        },
+                                        color = if (selected) Color(0xFF2B1919) else Color(0xFF171717),
+                                        shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(item.second, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                                Text(item.first, color = Muted, fontSize = 11.sp)
+                                            }
+                                            if (selected) Text("✓", color = AccentRed, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                            Text("Modelos locais precisam estar instalados no Ollama/LM Studio. Em celular físico, use o IP do computador.", color = Muted, fontSize = 10.sp)
                         }
-                        Text("Modelos locais exigem um endpoint compatível, como Ollama ou LM Studio.", color = Muted, fontSize = 11.sp)
+                    },
+                    confirmButton = { TextButton(onClick = { showModels = false }) { Text("Fechar", color = AccentRed) } }
+                )
+            }
+
+            if (historyOpen) AlertDialog(
+                onDismissRequest = { historyOpen = false },
+                containerColor = Panel,
+                title = { Text("Histórico de conversas", color = Color.White, fontWeight = FontWeight.Bold) },
+                text = {
+                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 440.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(sessions) { session ->
+                            Surface(
+                                onClick = { activeChatId = session.id; historyOpen = false; error = null; liveAnswer = "" },
+                                color = if (session.id == activeChatId) Color(0xFF2B1919) else Color(0xFF171717),
+                                shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(session.title, color = Color.White, maxLines = 2, fontSize = 13.sp)
+                                        Text(java.text.SimpleDateFormat("dd/MM HH:mm", java.util.Locale.getDefault()).format(java.util.Date(session.updatedAt)), color = Muted, fontSize = 10.sp)
+                                    }
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            db.messages().deleteForChat(session.id)
+                                            db.sessions().delete(session.id)
+                                            if (activeChatId == session.id) activeChatId = ""
+                                        }
+                                    }) { Text("Excluir", color = AccentRed, fontSize = 11.sp) }
+                                }
+                            }
+                        }
                     }
                 },
-                confirmButton = { TextButton(onClick = { showModels = false }) { Text("Fechar", color = AccentRed) } }
+                confirmButton = { TextButton(onClick = { historyOpen = false }) { Text("Fechar", color = AccentRed) } },
+                dismissButton = { TextButton(onClick = {
+                    scope.launch {
+                        val id = "chat-${System.currentTimeMillis()}"
+                        db.sessions().insert(ChatSession(id, "Nova conversa"))
+                        activeChatId = id; historyOpen = false; error = null; liveAnswer = ""
+                    }
+                }) { Text("＋ Nova conversa", color = AccentRed) } }
             )
 
             if (settingsOpen) SettingsDialog(
@@ -237,10 +329,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadConfig(): ProviderConfig = ProviderConfig(
-        provider = prefs.getString("provider", "Groq") ?: "Groq",
+        provider = prefs.getString("provider", "Local / OpenAI-compatible") ?: "Local / OpenAI-compatible",
         apiKey = prefs.getString("key_${prefs.getString("provider", "Groq") ?: "Groq"}", prefs.getString("apiKey", "")) ?: "",
-        baseUrl = prefs.getString("baseUrl", "https://api.groq.com/openai/v1") ?: "",
-        model = prefs.getString("model", "openai/gpt-oss-20b") ?: "",
+        baseUrl = prefs.getString("baseUrl", "http://10.0.2.2:11434/v1") ?: "",
+        model = prefs.getString("model", "llama3.2") ?: "",
         claudeCodeUrl = prefs.getString("claudeCodeUrl", "") ?: ""
     )
 
@@ -257,7 +349,7 @@ private fun MessageBubble(message: ChatMessage) {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (user) Alignment.End else Alignment.Start) {
         Text(if (user) "VOCÊ" else "NEXUS", color = if (user) Muted else AccentRed, fontSize = 10.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(5.dp))
-        Surface(color = if (user) Color(0xFF263022) else Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(if (user) .9f else 1f)) {
+        Surface(color = if (user) Color(0xFF202020) else Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(if (user) .9f else 1f)) {
             Text(message.content, Modifier.padding(14.dp), color = Ink, fontSize = 14.sp, lineHeight = 21.sp)
         }
     }
