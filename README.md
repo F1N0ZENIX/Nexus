@@ -1,43 +1,43 @@
-# Nexus AI — Android
+# Nexus AI
 
-O Nexus AI tem uma interface Android nativa em Kotlin + Jetpack Compose, com tema AMOLED escuro e destaque verde-lima, além da versão web mantida em `index.html`.
+Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaque vermelho suave.
 
-## Android
+## Recursos
 
-- Chat nativo com histórico persistido localmente em Room.
-- API keys armazenadas com AndroidX Security Crypto.
-- Respostas em streaming SSE para APIs compatíveis.
-- Provedores configuráveis: Anthropic Claude, Groq, OpenAI, endpoints OpenAI-compatible e endpoints locais (por exemplo, Ollama/LM Studio).
-- Modelos predefinidos e campos para adicionar modelos/endpoints próprios.
-- Configuração opcional de um backend do Claude Code.
-- GitHub Actions compila um APK de depuração a cada alteração relevante e publica o artefato `Nexus-AI-debug`.
+- **Histórico local de conversas:** chats separados, guardados no banco privado do próprio celular.
+- **Seletor de modelos:** pesquisa por nome, cartões de seleção e indicação do modelo ativo.
+- **Modelos locais:** presets de Llama, Qwen, DeepSeek, Mistral, Gemma, Phi, CodeLlama, StarCoder e Granite.
+- **Tema:** fundo `#000000`, texto branco e vermelho discreto.
+- **Interface adaptada ao Android:** respeita as barras do sistema e mantém os diálogos roláveis.
+- **Releases automáticas:** GitHub Actions compila o APK e publica a versão em Releases após alterações relevantes.
 
-### Baixar o APK
+## Baixar
 
-Abra **Actions → Nexus Android APK → execução mais recente → Artifacts → Nexus-AI-debug** no GitHub:
-https://github.com/F1N0ZENIX/Nexus/actions/workflows/android-apk.yml
+**[Abrir a versão mais recente em Releases](https://github.com/F1N0ZENIX/Nexus/releases/latest)**
 
-O artefato é um APK debug instalável, não uma versão de lançamento assinada para distribuição. O primeiro build pode levar alguns minutos.
-
-## Configurar modelos
-
-1. Instale o APK e abra Configurações.
-2. Escolha o provedor, informe a chave API quando necessária, URL base e ID exato do modelo.
-3. Salve e selecione o modelo no seletor do chat.
-
-Os modelos e seus IDs disponíveis podem mudar por provedor e plano. O app não inclui chaves pagas. O uso das APIs pode gerar custos.
+O build também pode ser acompanhado em [GitHub Actions](https://github.com/F1N0ZENIX/Nexus/actions/workflows/android-apk.yml).
 
 ## Modelos locais
 
-O app pode conectar-se a servidores compatíveis com OpenAI rodando na rede local. Para um celular físico, use o IP local do computador e certifique-se de que o servidor aceite conexões da rede. `10.0.2.2` só é o endereço usual do host no emulador Android.
+O Nexus conecta-se a um servidor compatível com OpenAI, como Ollama ou LM Studio. Os nomes no seletor são presets; o modelo precisa estar instalado e o servidor ligado.
 
-**Limitação:** os pesos do modelo não estão embutidos no APK; inferência totalmente offline no próprio telefone ainda não está integrada. Claude também não é um modelo open-source que possa ser empacotado localmente.
+- Emulador Android: `http://10.0.2.2:11434/v1`.
+- Telefone físico: configure o IP local do computador nas Preferências, por exemplo `http://192.168.1.10:11434/v1`.
+- O telefone e o computador devem estar na mesma rede, e o servidor precisa aceitar conexões da rede local.
 
-Mais detalhes: [LOCAL_MODELS.md](LOCAL_MODELS.md).
+**Importante:** os pesos dos modelos não vêm no APK. Esta versão ainda não executa inferência totalmente offline no próprio telefone; utiliza um runtime local acessível pela rede.
 
-## Claude Code
+## Histórico e privacidade
 
-Claude Code é um agente/CLI executado em computador ou servidor, não um modelo Android embutido. Há um bridge Node.js opcional em [backend/](backend/README.md). Ele exige que Claude Code já esteja instalado e autenticado no computador, e que você configure um token. O modo padrão do bridge é `plan`, para reduzir ações de escrita. Não exponha o servidor à internet sem controles fortes de segurança.
+As conversas ficam no banco privado do app e não são sincronizadas para a nuvem. Apagar os dados do aplicativo ou desinstalá-lo pode remover o histórico. Na tela de histórico, você pode abrir conversas antigas, criar novas ou excluir conversas.
+
+## Instalação e atualização
+
+1. Abra [Releases mais recentes](https://github.com/F1N0ZENIX/Nexus/releases/latest).
+2. Baixe o APK e permita a instalação da fonte usada.
+3. Para instalar por cima, a versão nova deve manter o mesmo ID de pacote e usar a mesma chave de assinatura.
+
+**Atenção:** o workflow atualmente gera APK de depuração com chave temporária do runner do GitHub. Isso significa que a instalação por cima entre builds automáticos ainda não é garantida. Para garantir atualizações sem desinstalar, é necessário configurar uma chave persistente como GitHub Actions Secrets e assinar todas as versões com ela. Não desinstale a versão atual até verificar se o novo APK aceita atualização.
 
 ## Build local
 
@@ -47,12 +47,10 @@ Requisitos: JDK 17 e Gradle 8.9.
 gradle assembleDebug
 ```
 
-APK gerado em `app/build/outputs/apk/debug/app-debug.apk`.
+APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Segurança e limitações
+## Limitações
 
-- As chaves são cifradas no armazenamento privado do Android; não compartilhe o dispositivo desbloqueado nem o APK com dados pessoais exportados.
-- Os endpoints locais em HTTP devem ser usados apenas em uma rede confiável.
-- A conexão a provedores externos requer internet.
-- A compatibilidade depende do formato de streaming e do endpoint do provedor.
-- O app foi preparado para build automatizado; o APK precisa ser testado em dispositivo real antes de considerar a versão estável.
+- Modelos precisam estar instalados no runtime local; não vêm embutidos no APK.
+- `10.0.2.2` é para emuladores, não para o Nothing Phone 1.
+- O APK precisa ser compilado e testado em dispositivo real antes de considerar a versão estável.
