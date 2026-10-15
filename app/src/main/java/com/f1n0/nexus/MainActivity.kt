@@ -36,6 +36,11 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
 
 private val Bg = Color(0xFF000000)
 private val Panel = Color(0xFF101010)
@@ -215,59 +220,163 @@ class MainActivity : ComponentActivity() {
 
             if (showModels) {
                 var modelSearch by remember { mutableStateOf("") }
-                val options = listOf(
-                    Triple("Local", "llama3.2", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "llama3.1", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "qwen2.5:3b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "qwen2.5:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "qwen3:4b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "deepseek-r1:1.5b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "deepseek-r1:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "deepseek-coder-v2:lite", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "mistral:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "mistral-nemo", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "gemma3:4b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "phi4-mini", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "codellama:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "starcoder2:3b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local", "granite3.3:2b", "http://10.0.2.2:11434/v1")
-                ).filter { it.second.contains(modelSearch, ignoreCase = true) || it.first.contains(modelSearch, ignoreCase = true) }
+                var modelCategory by remember { mutableStateOf("Leves") }
+                var kimiKey by remember { mutableStateOf(prefs.getString("key_Kimi", "") ?: "") }
+                var installedModels by remember { mutableStateOf(emptyList<InstalledOllamaModel>()) }
+                var modelManagerMessage by remember { mutableStateOf<String?>(null) }
+                var loadingInstalled by remember { mutableStateOf(false) }
+                val localEndpoint = config.baseUrl.ifBlank { "http://10.0.2.2:11434/v1" }
+                val localProvider = "Local / OpenAI-compatible"
+                val localOptions = listOf(
+                    ModelOption("Leves", "llama3.2:1b", "1–1,5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Leves", "qwen2.5:3b", "2–2,5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Leves", "deepseek-r1:1.5b", "1–1,5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Leves", "phi4-mini", "2,5–3 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Leves", "granite3.3:2b", "1,5–2 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Equilibrados", "llama3.2", "2–3 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Equilibrados", "llama3.1", "4,5–5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Equilibrados", "qwen2.5:7b", "4,5–5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Equilibrados", "qwen3:4b", "2,5–3 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Equilibrados", "mistral:7b", "4–5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Equilibrados", "mistral-nemo", "7–8 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Código", "deepseek-coder-v2:lite", "8–10 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Código", "codellama:7b", "4–5 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Código", "starcoder2:3b", "2–3 GB", "http://10.0.2.2:11434/v1"),
+                    ModelOption("Kimi", "kimi-k3", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1"),
+                    ModelOption("Kimi", "kimi-k2.7-code", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1"),
+                    ModelOption("Kimi", "kimi-k2.7-code-highspeed", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1"),
+                    ModelOption("Kimi", "kimi-k2.6", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1")
+                )
+                LaunchedEffect(showModels, localEndpoint) {
+                    if (showModels) {
+                        loadingInstalled = true
+                        modelManagerMessage = null
+                        try {
+                            installedModels = OllamaModelManager.list(localEndpoint)
+                        } catch (e: Exception) {
+                            modelManagerMessage = "Não foi possível ler os modelos do Ollama. Confira o endereço e se o servidor está ligado."
+                        } finally { loadingInstalled = false }
+                    }
+                }
                 AlertDialog(
                     onDismissRequest = { showModels = false },
                     containerColor = Panel,
-                    title = { Text("Escolher modelo", color = Color.White, fontWeight = FontWeight.Bold) },
+                    title = { Text("Modelos", color = Color.White, fontWeight = FontWeight.Bold) },
                     text = {
-                        Column(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+                        Column(Modifier.fillMaxWidth().heightIn(max = 560.dp)) {
                             OutlinedTextField(
                                 value = modelSearch, onValueChange = { modelSearch = it },
                                 modifier = Modifier.fillMaxWidth(), singleLine = true,
-                                placeholder = { Text("Buscar modelo ou provedor", color = Muted) },
+                                placeholder = { Text("Pesquisar modelos", color = Muted) },
                                 textStyle = androidx.compose.ui.text.TextStyle(color = Color.White)
                             )
-                            Spacer(Modifier.height(8.dp))
-                            LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                items(options) { item ->
-                                    val provider = "Local / OpenAI-compatible"
-                                    val selected = config.model == item.second && config.provider == provider
+                            Spacer(Modifier.height(9.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+                                listOf("Leves", "Equilibrados", "Código", "Kimi", "Instalados").forEach { category ->
+                                    val active = modelCategory == category
                                     Surface(
-                                        onClick = {
-                                            config = config.copy(provider = provider, model = item.second, baseUrl = item.third, apiKey = prefs.getString("key_$provider", "") ?: "")
-                                            saveConfig(config); showModels = false
-                                        },
-                                        color = if (selected) Color(0xFF2B1919) else Color(0xFF171717),
-                                        shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
+                                        onClick = { modelCategory = category },
+                                        color = if (active) AccentRed else Color(0xFF202020),
+                                        shape = RoundedCornerShape(10.dp)
                                     ) {
-                                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(Modifier.weight(1f)) {
-                                                Text(item.second, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                                Text("Modelo local", color = Muted, fontSize = 11.sp)
-                                            }
-                                            if (selected) Text("✓", color = AccentRed, fontWeight = FontWeight.Bold)
-                                        }
+                                        Text(category, Modifier.padding(horizontal = 9.dp, vertical = 8.dp),
+                                            color = if (active) Color.Black else Color.White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                                     }
                                 }
                             }
-                            Text("Modelos locais precisam estar instalados no Ollama/LM Studio. Em celular físico, use o IP do computador.", color = Muted, fontSize = 10.sp)
+                            Spacer(Modifier.height(8.dp))
+                            if (modelCategory == "Kimi") {
+                                Text("MODELOS KIMI · MOONSHOT AI", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                OutlinedTextField(
+                                    value = kimiKey, onValueChange = { kimiKey = it },
+                                    modifier = Modifier.fillMaxWidth(), singleLine = true,
+                                    label = { Text("Chave Kimi API") },
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White)
+                                )
+                                Text("Modelos na nuvem: não baixam nem ocupam armazenamento do telefone. É necessária uma chave da Moonshot AI.", color = Muted, fontSize = 10.sp)
+                                Spacer(Modifier.height(5.dp))
+                            }
+                            if (modelCategory == "Instalados") {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("MODELOS NO OLLAMA", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            loadingInstalled = true
+                                            try { installedModels = OllamaModelManager.list(localEndpoint); modelManagerMessage = null }
+                                            catch (_: Exception) { modelManagerMessage = "Falha ao consultar o Ollama." }
+                                            finally { loadingInstalled = false }
+                                        }
+                                    }) { Text("Atualizar", color = AccentRed, fontSize = 11.sp) }
+                                }
+                                Text("Servidor: $localEndpoint", color = Muted, fontSize = 9.sp)
+                                if (loadingInstalled) Text("Consultando modelos…", color = Muted, fontSize = 12.sp)
+                                if (installedModels.isEmpty() && !loadingInstalled) Text("Nenhum modelo encontrado ou servidor indisponível.", color = Muted, fontSize = 12.sp)
+                                LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    items(installedModels.filter { it.name.contains(modelSearch, true) }) { installed ->
+                                        Surface(color = Color(0xFF171717), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                                            Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(installed.name, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                                    Text(installed.sizeLabel, color = Muted, fontSize = 10.sp)
+                                                }
+                                                TextButton(onClick = {
+                                                    scope.launch {
+                                                        try {
+                                                            OllamaModelManager.delete(localEndpoint, installed.name)
+                                                            installedModels = OllamaModelManager.list(localEndpoint)
+                                                            if (config.model == installed.name) {
+                                                                config = config.copy(model = "llama3.2")
+                                                                saveConfig(config)
+                                                            }
+                                                            modelManagerMessage = "${installed.name} removido do Ollama."
+                                                        } catch (e: Exception) {
+                                                            modelManagerMessage = "Não foi possível remover ${installed.name}."
+                                                        }
+                                                    }
+                                                }) { Text("Desinstalar", color = AccentRed, fontSize = 10.sp) }
+                                            }
+                                        }
+                                    }
+                                }
+                                modelManagerMessage?.let { Text(it, color = Muted, fontSize = 10.sp) }
+                            } else {
+                                val options = localOptions.filter {
+                                    it.category == modelCategory &&
+                                        (it.name.contains(modelSearch, true) || it.category.contains(modelSearch, true))
+                                }
+                                LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    items(options) { item ->
+                                        val isKimi = item.category == "Kimi"
+                                        val provider = if (isKimi) "Kimi" else localProvider
+                                        val selected = config.model == item.name && config.provider == provider
+                                        Surface(
+                                            onClick = {
+                                                if (isKimi) {
+                                                    prefs.edit().putString("key_Kimi", kimiKey.trim()).apply()
+                                                    config = config.copy(provider = "Kimi", model = item.name, baseUrl = item.endpoint, apiKey = kimiKey.trim(), claudeCodeUrl = "")
+                                                } else {
+                                                    config = config.copy(provider = localProvider, model = item.name, baseUrl = item.endpoint, apiKey = "", claudeCodeUrl = "")
+                                                }
+                                                saveConfig(config); showModels = false
+                                            },
+                                            color = if (selected) Color(0xFF2B1919) else Color(0xFF171717),
+                                            shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Column(Modifier.weight(1f)) {
+                                                    Text(item.name, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                                    Text("${item.sizeLabel} · ${if (isKimi) "Kimi Cloud" else "Tamanho estimado"}", color = Muted, fontSize = 10.sp)
+                                                }
+                                                if (selected) Text("✓", color = AccentRed, fontWeight = FontWeight.Bold)
+                                            }
+                                        }
+                                    }
+                                }
+                                if (modelCategory != "Kimi") {
+                                    Text("Estimativas para quantizações comuns; o tamanho real depende da versão. Baixar e remover modelos é feito pelo Ollama na aba Instalados.", color = Muted, fontSize = 9.sp)
+                                }
+                            }
                         }
                     },
                     confirmButton = { TextButton(onClick = { showModels = false }) { Text("Fechar", color = AccentRed) } }
@@ -387,4 +496,40 @@ private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSav
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar", color = Muted) } }
     )
+}
+
+
+private data class ModelOption(val category: String, val name: String, val sizeLabel: String, val endpoint: String)
+private data class InstalledOllamaModel(val name: String, val sizeBytes: Long) {
+    val sizeLabel: String get() = String.format(java.util.Locale.US, "%.2f GB", sizeBytes / (1024.0 * 1024.0 * 1024.0))
+}
+
+private object OllamaModelManager {
+    private val client = OkHttpClient.Builder().connectTimeout(8, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+    private val jsonType = "application/json; charset=utf-8".toMediaType()
+
+    private fun apiRoot(openAiEndpoint: String): String {
+        val root = openAiEndpoint.trim().trimEnd('/')
+        return root.removeSuffix("/v1")
+    }
+
+    suspend fun list(openAiEndpoint: String): List<InstalledOllamaModel> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val request = Request.Builder().url(apiRoot(openAiEndpoint) + "/api/tags").get().build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("Ollama respondeu ${response.code}")
+            val models = org.json.JSONObject(response.body?.string().orEmpty()).optJSONArray("models") ?: org.json.JSONArray()
+            (0 until models.length()).mapNotNull { i ->
+                val item = models.optJSONObject(i) ?: return@mapNotNull null
+                InstalledOllamaModel(item.optString("name"), item.optLong("size", 0L))
+            }.sortedBy { it.name }
+        }
+    }
+
+    suspend fun delete(openAiEndpoint: String, modelName: String) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val body = org.json.JSONObject().put("name", modelName).toString().toRequestBody(jsonType)
+        val request = Request.Builder().url(apiRoot(openAiEndpoint) + "/api/delete").delete(body).build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("Não foi possível remover o modelo (${response.code})")
+        }
+    }
 }
