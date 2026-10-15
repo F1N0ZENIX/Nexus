@@ -1,4 +1,4 @@
-name: Nexus Android APK
+name: Nexus Android APK and Releases
 
 on:
   push:
@@ -8,22 +8,30 @@ on:
       - '*.gradle.kts'
       - 'gradle.properties'
       - '.github/workflows/android-apk.yml'
+      - 'README.md'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: nexus-android-apk-${{ github.ref }}
+  group: nexus-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | cut -d '"' -f 2)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION-build.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -35,10 +43,43 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
-      - name: Upload APK
+      - name: Sign with persistent release key when configured
+        env:
+          NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          if [ -n "$NEXUS_KEYSTORE_BASE64" ] && [ -n "$NEXUS_KEYSTORE_PASSWORD" ] && [ -n "$NEXUS_KEY_ALIAS" ] && [ -n "$NEXUS_KEY_PASSWORD" ]; then
+            echo "$NEXUS_KEYSTORE_BASE64" | base64 --decode > nexus-release.jks
+            APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+            "$APKSIGNER" sign --ks nexus-release.jks --ks-key-alias "$NEXUS_KEY_ALIAS" --ks-pass env:NEXUS_KEYSTORE_PASSWORD --key-pass env:NEXUS_KEY_PASSWORD --out Nexus-release.apk "$APK"
+            "$APKSIGNER" verify Nexus-release.apk
+            echo "Persistent release signature applied."
+          else
+            cp "$APK" Nexus-release.apk
+            echo "::warning::Release secrets are not configured; this debug-signed APK may not install over a previous build."
+          fi
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: Nexus-AI-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: Nexus-release.apk
           if-no-files-found: error
           retention-days: 30
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Nexus AI ${{ steps.version.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            Release automática do Nexus AI.
+            - Tema AMOLED preto com destaque vermelho suave
+            - Histórico de conversas salvo localmente
+            - Seletor pesquisável de modelos locais
+            Para atualizações por cima, configure uma chave de assinatura persistente nos Secrets do repositório.
+          files: Nexus-release.apk
+          fail_on_unmatched_files: true
+          make_latest: true
