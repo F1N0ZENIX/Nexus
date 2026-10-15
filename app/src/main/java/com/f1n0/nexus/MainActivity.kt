@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
                 var installedModels by remember { mutableStateOf(emptyList<InstalledOllamaModel>()) }
                 var modelManagerMessage by remember { mutableStateOf<String?>(null) }
                 var loadingInstalled by remember { mutableStateOf(false) }
-                val localEndpoint = config.baseUrl.ifBlank { "http://10.0.2.2:11434/v1" }
+                val localEndpoint = prefs.getString("localEndpoint", "http://10.0.2.2:11434/v1") ?: "http://10.0.2.2:11434/v1"
                 val localProvider = "Local / OpenAI-compatible"
                 val localOptions = listOf(
                     ModelOption("Leves", "llama3.2:1b", "1–1,5 GB", "http://10.0.2.2:11434/v1"),
@@ -356,7 +356,7 @@ class MainActivity : ComponentActivity() {
                                                     prefs.edit().putString("key_Kimi", kimiKey.trim()).apply()
                                                     config = config.copy(provider = "Kimi", model = item.name, baseUrl = item.endpoint, apiKey = kimiKey.trim(), claudeCodeUrl = "")
                                                 } else {
-                                                    config = config.copy(provider = localProvider, model = item.name, baseUrl = item.endpoint, apiKey = "", claudeCodeUrl = "")
+                                                    config = config.copy(provider = localProvider, model = item.name, baseUrl = (prefs.getString("localEndpoint", item.endpoint) ?: item.endpoint), apiKey = "", claudeCodeUrl = "")
                                                 }
                                                 saveConfig(config); showModels = false
                                             },
@@ -425,7 +425,7 @@ class MainActivity : ComponentActivity() {
             if (settingsOpen) SettingsDialog(
                 initial = config,
                 onDismiss = { settingsOpen = false },
-                onSave = { config = it; saveConfig(it); settingsOpen = false },
+                onSave = { config = it; prefs.edit().putString("localEndpoint", it.baseUrl).apply(); saveConfig(it); settingsOpen = false },
                 keyForProvider = { name -> prefs.getString("key_$name", "") ?: "" }
             )
         }
