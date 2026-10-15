@@ -222,8 +222,7 @@ class MainActivity : ComponentActivity() {
             if (showModels) {
                 var modelSearch by remember { mutableStateOf("") }
                 var modelCategory by remember { mutableStateOf("Leves") }
-                var kimiKey by remember { mutableStateOf(prefs.getString("key_Kimi", "") ?: "") }
-                var installedModels by remember { mutableStateOf(emptyList<InstalledOllamaModel>()) }
+                                var installedModels by remember { mutableStateOf(emptyList<InstalledOllamaModel>()) }
                 var modelManagerMessage by remember { mutableStateOf<String?>(null) }
                 var loadingInstalled by remember { mutableStateOf(false) }
                 val localEndpoint = prefs.getString("localEndpoint", "http://10.0.2.2:11434/v1") ?: "http://10.0.2.2:11434/v1"
@@ -243,10 +242,7 @@ class MainActivity : ComponentActivity() {
                     ModelOption("Código", "deepseek-coder-v2:lite", "8–10 GB", "http://10.0.2.2:11434/v1"),
                     ModelOption("Código", "codellama:7b", "4–5 GB", "http://10.0.2.2:11434/v1"),
                     ModelOption("Código", "starcoder2:3b", "2–3 GB", "http://10.0.2.2:11434/v1"),
-                    ModelOption("Kimi", "kimi-k3", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1"),
-                    ModelOption("Kimi", "kimi-k2.7-code", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1"),
-                    ModelOption("Kimi", "kimi-k2.7-code-highspeed", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1"),
-                    ModelOption("Kimi", "kimi-k2.6", "Nuvem · 0 GB no celular", "https://api.moonshot.ai/v1")
+                    ModelOption("Kimi Local", "qwen3:4b", "2,5–3 GB · alternativa local", "http://10.0.2.2:11434/v1")
                 )
                 LaunchedEffect(showModels, localEndpoint) {
                     if (showModels) {
@@ -273,7 +269,7 @@ class MainActivity : ComponentActivity() {
                             )
                             Spacer(Modifier.height(9.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                                listOf("Leves", "Equilibrados", "Código", "Kimi", "Instalados").forEach { category ->
+                                listOf("Leves", "Equilibrados", "Código", "Kimi Local", "Instalados").forEach { category ->
                                     val active = modelCategory == category
                                     Surface(
                                         onClick = { modelCategory = category },
@@ -286,16 +282,9 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             Spacer(Modifier.height(8.dp))
-                            if (modelCategory == "Kimi") {
-                                Text("MODELOS KIMI · MOONSHOT AI", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                OutlinedTextField(
-                                    value = kimiKey, onValueChange = { kimiKey = it },
-                                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                                    label = { Text("Chave Kimi API") },
-                                    visualTransformation = PasswordVisualTransformation(),
-                                    textStyle = androidx.compose.ui.text.TextStyle(color = Color.White)
-                                )
-                                Text("Modelos na nuvem: não baixam nem ocupam armazenamento do telefone. É necessária uma chave da Moonshot AI.", color = Muted, fontSize = 10.sp)
+                            if (modelCategory == "Kimi Local") {
+                                Text("EXECUÇÃO LOCAL · SEM API KIMI", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text("Os modelos oficiais Kimi atuais são grandes demais para rodar diretamente neste celular. Esta categoria oferece Qwen3 4B como alternativa local leve. As mensagens vão apenas ao servidor local configurado, não à API Kimi.", color = Muted, fontSize = 10.sp)
                                 Spacer(Modifier.height(5.dp))
                             }
                             if (modelCategory == "Instalados") {
@@ -348,17 +337,10 @@ class MainActivity : ComponentActivity() {
                                 }
                                 LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                     items(options) { item ->
-                                        val isKimi = item.category == "Kimi"
-                                        val provider = if (isKimi) "Kimi" else localProvider
-                                        val selected = config.model == item.name && config.provider == provider
+                                        val selected = config.model == item.name && config.provider == localProvider
                                         Surface(
                                             onClick = {
-                                                if (isKimi) {
-                                                    prefs.edit().putString("key_Kimi", kimiKey.trim()).apply()
-                                                    config = config.copy(provider = "Kimi", model = item.name, baseUrl = item.endpoint, apiKey = kimiKey.trim(), claudeCodeUrl = "")
-                                                } else {
-                                                    config = config.copy(provider = localProvider, model = item.name, baseUrl = (prefs.getString("localEndpoint", item.endpoint) ?: item.endpoint), apiKey = "", claudeCodeUrl = "")
-                                                }
+                                                config = config.copy(provider = localProvider, model = item.name, baseUrl = (prefs.getString("localEndpoint", item.endpoint) ?: item.endpoint), apiKey = "", claudeCodeUrl = "")
                                                 saveConfig(config); showModels = false
                                             },
                                             color = if (selected) Color(0xFF2B1919) else Color(0xFF171717),
@@ -367,16 +349,14 @@ class MainActivity : ComponentActivity() {
                                             Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                                                 Column(Modifier.weight(1f)) {
                                                     Text(item.name, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                                    Text("${item.sizeLabel} · ${if (isKimi) "Kimi Cloud" else "Tamanho estimado"}", color = Muted, fontSize = 10.sp)
+                                                    Text("${item.sizeLabel} · tamanho estimado", color = Muted, fontSize = 10.sp)
                                                 }
                                                 if (selected) Text("✓", color = AccentRed, fontWeight = FontWeight.Bold)
                                             }
                                         }
                                     }
                                 }
-                                if (modelCategory != "Kimi") {
-                                    Text("Estimativas para quantizações comuns; o tamanho real depende da versão. Baixar e remover modelos é feito pelo Ollama na aba Instalados.", color = Muted, fontSize = 9.sp)
-                                }
+                                Text("Estimativas para quantizações comuns; o tamanho real depende da versão. Baixar e remover modelos é feito pelo Ollama na aba Instalados.", color = Muted, fontSize = 9.sp)
                             }
                         }
                     },
@@ -439,16 +419,6 @@ class MainActivity : ComponentActivity() {
         val localModels = setOf("llama3.2:1b", "llama3.2", "llama3.1", "qwen2.5:3b", "qwen2.5:7b", "qwen3:4b",
             "deepseek-r1:1.5b", "deepseek-r1:7b", "deepseek-coder-v2:lite", "mistral:7b",
             "mistral-nemo", "gemma3:4b", "phi4-mini", "codellama:7b", "starcoder2:3b", "granite3.3:2b")
-        val kimiModels = setOf("kimi-k3", "kimi-k2.7-code", "kimi-k2.7-code-highspeed", "kimi-k2.6")
-        if (savedProvider == "Kimi" && savedModel in kimiModels) {
-            return ProviderConfig(
-                provider = "Kimi",
-                apiKey = prefs.getString("key_Kimi", "") ?: "",
-                baseUrl = "https://api.moonshot.ai/v1",
-                model = savedModel,
-                claudeCodeUrl = ""
-            )
-        }
         return ProviderConfig(
             provider = localProvider,
             apiKey = "",
