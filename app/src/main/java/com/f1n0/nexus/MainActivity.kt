@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -271,7 +272,7 @@ class MainActivity : ComponentActivity() {
                                 textStyle = androidx.compose.ui.text.TextStyle(color = Color.White)
                             )
                             Spacer(Modifier.height(9.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                                 listOf("Leves", "Equilibrados", "Código", "Kimi", "Instalados").forEach { category ->
                                     val active = modelCategory == category
                                     Surface(
