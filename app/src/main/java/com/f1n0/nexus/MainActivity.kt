@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -34,9 +36,9 @@ import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-private val Bg = Color(0xFF080A09)
-private val Panel = Color(0xFF131715)
-private val Lime = Color(0xFFC8FF45)
+private val Bg = Color(0xFF000000)
+private val Panel = Color(0xFF101010)
+private val AccentRed = Color(0xFFFF3030)
 private val Muted = Color(0xFF9BA69E)
 private val Ink = Color(0xFFEAF0EB)
 
@@ -66,16 +68,16 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) { db.messages().observeAll().collect { messages = it } }
 
             MaterialTheme(colorScheme = darkColorScheme(
-                primary = Lime, onPrimary = Bg, background = Bg, surface = Panel,
-                onSurface = Ink, onBackground = Ink, secondary = Lime
+                primary = AccentRed, onPrimary = Bg, background = Bg, surface = Panel,
+                onSurface = Ink, onBackground = Ink, secondary = AccentRed
             )) {
                 Surface(Modifier.fillMaxSize(), color = Bg) {
-                    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 16.dp)) {
                         Row(
                             Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(Modifier.size(36.dp).background(Lime, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(36.dp).background(AccentRed, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
                                 Text("N", color = Bg, fontWeight = FontWeight.Black, fontSize = 22.sp)
                             }
                             Spacer(Modifier.width(10.dp))
@@ -95,10 +97,10 @@ class MainActivity : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
-                                Text(config.provider, color = Lime, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                Text(config.provider, color = AccentRed, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                                 Text(config.model, color = Ink, fontSize = 13.sp, maxLines = 1)
                             }
-                            TextButton(onClick = { showModels = true }) { Text("TROCAR", color = Lime, fontSize = 11.sp) }
+                            TextButton(onClick = { showModels = true }) { Text("TROCAR", color = AccentRed, fontSize = 11.sp) }
                         }
                         if (messages.isEmpty() && liveAnswer.isBlank()) {
                             Spacer(Modifier.height(42.dp))
@@ -120,7 +122,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             items(messages) { msg -> MessageBubble(msg) }
                             if (liveAnswer.isNotBlank()) item { MessageBubble(ChatMessage(role = "assistant", content = liveAnswer)) }
-                            if (streaming && liveAnswer.isBlank()) item { Text("Pensando…", color = Lime, modifier = Modifier.padding(12.dp)) }
+                            if (streaming && liveAnswer.isBlank()) item { Text("Pensando…", color = AccentRed, modifier = Modifier.padding(12.dp)) }
                         }
                         error?.let {
                             Text(it, color = Color(0xFFFF8D83), fontSize = 12.sp, modifier = Modifier.padding(vertical = 5.dp))
@@ -134,7 +136,7 @@ class MainActivity : ComponentActivity() {
                                 value = prompt, onValueChange = { prompt = it },
                                 modifier = Modifier.weight(1f).heightIn(min = 44.dp, max = 130.dp).padding(horizontal = 8.dp, vertical = 12.dp),
                                 textStyle = androidx.compose.ui.text.TextStyle(color = Ink, fontSize = 15.sp),
-                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Lime),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(AccentRed),
                                 decorationBox = { inner ->
                                     Box {
                                         if (prompt.isBlank()) Text("Pergunte ao Nexus…", color = Muted, fontSize = 15.sp)
@@ -173,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 enabled = !streaming && prompt.isNotBlank(),
-                                colors = IconButtonDefaults.filledIconButtonColors(containerColor = Lime, contentColor = Bg)
+                                colors = IconButtonDefaults.filledIconButtonColors(containerColor = AccentRed, contentColor = Bg)
                             ) { Icon(Icons.Default.ArrowUpward, "Enviar") }
                         }
                     }
@@ -186,6 +188,21 @@ class MainActivity : ComponentActivity() {
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(
+                            Triple("Local / OpenAI-compatible", "llama3.2", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "llama3.1", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "qwen2.5:3b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "qwen2.5:7b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "qwen3:4b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "deepseek-r1:1.5b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "deepseek-r1:7b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "deepseek-coder-v2:lite", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "mistral:7b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "mistral-nemo", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "gemma3:4b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "phi4-mini", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "codellama:7b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "starcoder2:3b", "http://10.0.2.2:11434/v1"),
+                            Triple("Local / OpenAI-compatible", "granite3.3:2b", "http://10.0.2.2:11434/v1"),
                             Triple("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1"),
                             Triple("Groq", "openai/gpt-oss-120b", "https://api.groq.com/openai/v1"),
                             Triple("Groq", "qwen/qwen3-32b", "https://api.groq.com/openai/v1"),
@@ -202,12 +219,12 @@ class MainActivity : ComponentActivity() {
                                     apiKey = prefs.getString("key_${item.first}", "") ?: ""
                                 )
                                 saveConfig(config); showModels = false
-                            }) { Text("${item.first}  ·  ${item.second}", color = if (config.model == item.second) Lime else Ink) }
+                            }) { Text("${item.first}  ·  ${item.second}", color = if (config.model == item.second) AccentRed else Ink) }
                         }
                         Text("Modelos locais exigem um endpoint compatível, como Ollama ou LM Studio.", color = Muted, fontSize = 11.sp)
                     }
                 },
-                confirmButton = { TextButton(onClick = { showModels = false }) { Text("Fechar", color = Lime) } }
+                confirmButton = { TextButton(onClick = { showModels = false }) { Text("Fechar", color = AccentRed) } }
             )
 
             if (settingsOpen) SettingsDialog(
@@ -238,7 +255,7 @@ class MainActivity : ComponentActivity() {
 private fun MessageBubble(message: ChatMessage) {
     val user = message.role == "user"
     Column(Modifier.fillMaxWidth(), horizontalAlignment = if (user) Alignment.End else Alignment.Start) {
-        Text(if (user) "VOCÊ" else "NEXUS", color = if (user) Muted else Lime, fontSize = 10.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
+        Text(if (user) "VOCÊ" else "NEXUS", color = if (user) Muted else AccentRed, fontSize = 10.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(5.dp))
         Surface(color = if (user) Color(0xFF263022) else Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(if (user) .9f else 1f)) {
             Text(message.content, Modifier.padding(14.dp), color = Ink, fontSize = 14.sp, lineHeight = 21.sp)
@@ -258,8 +275,8 @@ private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSav
         onDismissRequest = onDismiss, containerColor = Panel,
         title = { Text("Configurações", color = Ink, fontWeight = FontWeight.Bold) },
         text = {
-            Column(Modifier.fillMaxWidth().heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("PROVEDOR", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("PROVEDOR", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 var expanded by remember { mutableStateOf(false) }
                 Box {
                     OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text(provider, color = Ink) }
@@ -290,7 +307,7 @@ private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSav
         },
         confirmButton = {
             TextButton(onClick = { onSave(ProviderConfig(provider, key.trim(), base.trim(), model.trim(), codeUrl.trim())) }) {
-                Text("Salvar", color = Lime)
+                Text("Salvar", color = AccentRed)
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar", color = Muted) } }
