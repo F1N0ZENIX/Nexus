@@ -37,7 +37,21 @@ As conversas ficam no banco privado do app e não são sincronizadas para a nuve
 2. Baixe o APK e permita a instalação da fonte usada.
 3. Para instalar por cima, a versão nova deve manter o mesmo ID de pacote e usar a mesma chave de assinatura.
 
-**Atenção:** o workflow atualmente gera APK de depuração com chave temporária do runner do GitHub. Isso significa que a instalação por cima entre builds automáticos ainda não é garantida. Para garantir atualizações sem desinstalar, é necessário configurar uma chave persistente como GitHub Actions Secrets e assinar todas as versões com ela. Não desinstale a versão atual até verificar se o novo APK aceita atualização.
+**Atenção:** o workflow suporta assinatura persistente, mas ela só é ativada depois que você configurar os Secrets abaixo. Sem isso, o APK usa uma chave temporária do runner e pode não instalar por cima de versões anteriores.
+
+Para habilitar atualizações por cima:
+
+1. Gere uma chave de assinatura uma única vez em um computador com JDK:
+   `keytool -genkeypair -v -keystore nexus-release.jks -alias nexus -keyalg RSA -keysize 2048 -validity 10000`
+2. Converta o arquivo para Base64. No Linux: `base64 -w 0 nexus-release.jks`. No macOS, se `-w` não existir: `base64 nexus-release.jks | tr -d '\n'`.
+3. No GitHub, abra **Settings → Secrets and variables → Actions → New repository secret** e crie:
+   - `NEXUS_KEYSTORE_BASE64`: conteúdo Base64 do arquivo `nexus-release.jks`
+   - `NEXUS_KEYSTORE_PASSWORD`: senha do keystore
+   - `NEXUS_KEY_ALIAS`: `nexus`
+   - `NEXUS_KEY_PASSWORD`: senha da chave
+4. Guarde uma cópia segura do keystore e das senhas; não as publique no repositório.
+
+Se a versão instalada no celular foi assinada por uma chave temporária diferente, pode ser necessária uma desinstalação única para migrar para a assinatura persistente. Depois disso, mantenha a mesma chave em todas as releases.
 
 ## Build local
 
