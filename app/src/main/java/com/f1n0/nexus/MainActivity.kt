@@ -197,7 +197,10 @@ class MainActivity : ComponentActivity() {
                             Triple("Local / OpenAI-compatible", "llama3.2", "http://10.0.2.2:11434/v1")
                         ).forEach { item ->
                             TextButton(onClick = {
-                                config = config.copy(provider = item.first, model = item.second, baseUrl = item.third)
+                                config = config.copy(
+                                    provider = item.first, model = item.second, baseUrl = item.third,
+                                    apiKey = prefs.getString("key_${item.first}", "") ?: ""
+                                )
                                 saveConfig(config); showModels = false
                             }) { Text("${item.first}  ·  ${item.second}", color = if (config.model == item.second) Lime else Ink) }
                         }
@@ -210,14 +213,15 @@ class MainActivity : ComponentActivity() {
             if (settingsOpen) SettingsDialog(
                 initial = config,
                 onDismiss = { settingsOpen = false },
-                onSave = { config = it; saveConfig(it); settingsOpen = false }
+                onSave = { config = it; saveConfig(it); settingsOpen = false },
+                keyForProvider = { name -> prefs.getString("key_$name", "") ?: "" }
             )
         }
     }
 
     private fun loadConfig(): ProviderConfig = ProviderConfig(
         provider = prefs.getString("provider", "Groq") ?: "Groq",
-        apiKey = prefs.getString("apiKey", "") ?: "",
+        apiKey = prefs.getString("key_${prefs.getString("provider", "Groq") ?: "Groq"}", prefs.getString("apiKey", "")) ?: "",
         baseUrl = prefs.getString("baseUrl", "https://api.groq.com/openai/v1") ?: "",
         model = prefs.getString("model", "openai/gpt-oss-20b") ?: "",
         claudeCodeUrl = prefs.getString("claudeCodeUrl", "") ?: ""
@@ -225,7 +229,7 @@ class MainActivity : ComponentActivity() {
 
     private fun saveConfig(c: ProviderConfig) {
         prefs.edit().putString("provider", c.provider).putString("apiKey", c.apiKey)
-            .putString("baseUrl", c.baseUrl).putString("model", c.model)
+            .putString("key_${c.provider}", c.apiKey).putString("baseUrl", c.baseUrl).putString("model", c.model)
             .putString("claudeCodeUrl", c.claudeCodeUrl).apply()
     }
 }
@@ -243,7 +247,7 @@ private fun MessageBubble(message: ChatMessage) {
 }
 
 @Composable
-private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSave: (ProviderConfig) -> Unit) {
+private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSave: (ProviderConfig) -> Unit, keyForProvider: (String) -> String) {
     var provider by remember { mutableStateOf(initial.provider) }
     var key by remember { mutableStateOf(initial.apiKey) }
     var base by remember { mutableStateOf(initial.baseUrl) }
@@ -262,7 +266,7 @@ private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSav
                     DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         listOf("Anthropic", "Groq", "OpenAI", "OpenAI-compatible", "Local / OpenAI-compatible", "Claude Code").forEach {
                             DropdownMenuItem(text = { Text(it) }, onClick = {
-                                provider = it; expanded = false
+                                provider = it; key = keyForProvider(it); expanded = false
                                 when (it) {
                                     "Anthropic" -> { base = "https://api.anthropic.com/v1"; if (model.startsWith("gpt")) model = "claude-sonnet-4-5" }
                                     "Groq" -> { base = "https://api.groq.com/openai/v1"; model = "openai/gpt-oss-20b" }
