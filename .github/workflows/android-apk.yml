@@ -1,14 +1,6 @@
 name: Nexus Android APK and Releases
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - '*.gradle.kts'
-      - 'gradle.properties'
-      - '.github/workflows/android-apk.yml'
-      - 'README.md'
   workflow_dispatch:
 
 permissions:
