@@ -214,29 +214,21 @@ class MainActivity : ComponentActivity() {
             if (showModels) {
                 var modelSearch by remember { mutableStateOf("") }
                 val options = listOf(
-                    Triple("Local / OpenAI-compatible", "llama3.2", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "llama3.1", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "qwen2.5:3b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "qwen2.5:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "qwen3:4b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "deepseek-r1:1.5b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "deepseek-r1:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "deepseek-coder-v2:lite", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "mistral:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "mistral-nemo", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "gemma3:4b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "phi4-mini", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "codellama:7b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "starcoder2:3b", "http://10.0.2.2:11434/v1"),
-                    Triple("Local / OpenAI-compatible", "granite3.3:2b", "http://10.0.2.2:11434/v1"),
-                    Triple("Groq", "openai/gpt-oss-20b", "https://api.groq.com/openai/v1"),
-                    Triple("Groq", "openai/gpt-oss-120b", "https://api.groq.com/openai/v1"),
-                    Triple("Groq", "qwen/qwen3-32b", "https://api.groq.com/openai/v1"),
-                    Triple("Groq", "moonshotai/kimi-k2-instruct", "https://api.groq.com/openai/v1"),
-                    Triple("Anthropic", "claude-sonnet-4-5", "https://api.anthropic.com/v1"),
-                    Triple("Anthropic", "claude-haiku-4-5", "https://api.anthropic.com/v1"),
-                    Triple("Anthropic", "claude-opus-4-1", "https://api.anthropic.com/v1"),
-                    Triple("OpenAI", "gpt-4o-mini", "https://api.openai.com/v1")
+                    Triple("Local", "llama3.2", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "llama3.1", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "qwen2.5:3b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "qwen2.5:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "qwen3:4b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "deepseek-r1:1.5b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "deepseek-r1:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "deepseek-coder-v2:lite", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "mistral:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "mistral-nemo", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "gemma3:4b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "phi4-mini", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "codellama:7b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "starcoder2:3b", "http://10.0.2.2:11434/v1"),
+                    Triple("Local", "granite3.3:2b", "http://10.0.2.2:11434/v1")
                 ).filter { it.second.contains(modelSearch, ignoreCase = true) || it.first.contains(modelSearch, ignoreCase = true) }
                 AlertDialog(
                     onDismissRequest = { showModels = false },
@@ -253,7 +245,7 @@ class MainActivity : ComponentActivity() {
                             Spacer(Modifier.height(8.dp))
                             LazyColumn(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 items(options) { item ->
-                                    val provider = if (item.first == "Local / OpenAI-compatible") item.first else item.first
+                                    val provider = "Local / OpenAI-compatible"
                                     val selected = config.model == item.second && config.provider == provider
                                     Surface(
                                         onClick = {
@@ -266,7 +258,7 @@ class MainActivity : ComponentActivity() {
                                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                             Column(Modifier.weight(1f)) {
                                                 Text(item.second, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                                                Text(item.first, color = Muted, fontSize = 11.sp)
+                                                Text("Modelo local", color = Muted, fontSize = 11.sp)
                                             }
                                             if (selected) Text("✓", color = AccentRed, fontWeight = FontWeight.Bold)
                                         }
@@ -357,48 +349,29 @@ private fun MessageBubble(message: ChatMessage) {
 
 @Composable
 private fun SettingsDialog(initial: ProviderConfig, onDismiss: () -> Unit, onSave: (ProviderConfig) -> Unit, keyForProvider: (String) -> String) {
-    var provider by remember { mutableStateOf(initial.provider) }
-    var key by remember { mutableStateOf(initial.apiKey) }
-    var base by remember { mutableStateOf(initial.baseUrl) }
     var model by remember { mutableStateOf(initial.model) }
-    var codeUrl by remember { mutableStateOf(initial.claudeCodeUrl) }
-    var keyVisible by remember { mutableStateOf(false) }
+    var endpoint by remember { mutableStateOf(initial.baseUrl.ifBlank { "http://10.0.2.2:11434/v1" }) }
     AlertDialog(
-        onDismissRequest = onDismiss, containerColor = Panel,
-        title = { Text("Configurações", color = Ink, fontWeight = FontWeight.Bold) },
+        onDismissRequest = onDismiss,
+        containerColor = Panel,
+        title = { Text("Preferências", color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
-            Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("PROVEDOR", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                var expanded by remember { mutableStateOf(false) }
-                Box {
-                    OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) { Text(provider, color = Ink) }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        listOf("Anthropic", "Groq", "OpenAI", "OpenAI-compatible", "Local / OpenAI-compatible", "Claude Code").forEach {
-                            DropdownMenuItem(text = { Text(it) }, onClick = {
-                                provider = it; key = keyForProvider(it); expanded = false
-                                when (it) {
-                                    "Anthropic" -> { base = "https://api.anthropic.com/v1"; if (model.startsWith("gpt")) model = "claude-sonnet-4-5" }
-                                    "Groq" -> { base = "https://api.groq.com/openai/v1"; model = "openai/gpt-oss-20b" }
-                                    "OpenAI" -> { base = "https://api.openai.com/v1"; model = "gpt-4o-mini" }
-                                    "Local / OpenAI-compatible" -> { base = "http://10.0.2.2:11434/v1"; model = "llama3.2" }
-                                }
-                            })
-                        }
-                    }
-                }
-                OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("ID do modelo") }, singleLine = true)
+            Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("MODELO LOCAL", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
-                    value = key, onValueChange = { key = it }, label = { Text("Chave API (opcional para local)") },
-                    singleLine = true, visualTransformation = if (keyVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = { TextButton(onClick = { keyVisible = !keyVisible }) { Text(if (keyVisible) "Ocultar" else "Ver") } }
+                    value = model, onValueChange = { model = it },
+                    modifier = Modifier.fillMaxWidth(), label = { Text("Nome exato do modelo") }, singleLine = true
                 )
-                OutlinedTextField(value = base, onValueChange = { base = it }, label = { Text("Endpoint base") }, singleLine = true)
-                OutlinedTextField(value = codeUrl, onValueChange = { codeUrl = it }, label = { Text("Claude Code backend URL") }, singleLine = true)
-                Text("Chaves guardadas em armazenamento cifrado do Android. Nunca partilhe seu APK com chaves já configuradas.", color = Muted, fontSize = 11.sp)
+                OutlinedTextField(
+                    value = endpoint, onValueChange = { endpoint = it },
+                    modifier = Modifier.fillMaxWidth(), label = { Text("Servidor local") }, singleLine = true
+                )
+                Text("Conecte a um Ollama ou LM Studio. No celular físico, use o IP local do computador, por exemplo http://192.168.1.10:11434/v1. O modelo precisa estar instalado no servidor.", color = Muted, fontSize = 11.sp)
+                Text("O histórico fica salvo no armazenamento privado deste celular. Não há sincronização em nuvem.", color = Muted, fontSize = 11.sp)
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(ProviderConfig(provider, key.trim(), base.trim(), model.trim(), codeUrl.trim())) }) {
+            TextButton(onClick = { onSave(initial.copy(provider = "Local / OpenAI-compatible", apiKey = "", baseUrl = endpoint.trim(), model = model.trim(), claudeCodeUrl = "")) }) {
                 Text("Salvar", color = AccentRed)
             }
         },
