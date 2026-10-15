@@ -1,61 +1,58 @@
-# Nexus AI
+# Nexus AI — Android
 
-Uma interface de IA responsiva, em português, com visual minimalista escuro e destaque verde-lima. A versão atual do repositório é uma aplicação web estática; ela **ainda não é um APK Android nativo**.
+O Nexus AI tem uma interface Android nativa em Kotlin + Jetpack Compose, com tema AMOLED escuro e destaque verde-lima, além da versão web mantida em `index.html`.
 
-## O que existe nesta versão
+## Android
 
-- Chat com histórico local e múltiplas conversas.
-- Seleção de modelo e cadastro de provedores.
-- Provedores predefinidos: Anthropic Claude, Groq e OpenAI.
-- Possibilidade de adicionar endpoints compatíveis com a API OpenAI ou Anthropic.
-- Configuração de chaves por provedor.
-- Renderização de Markdown sanitizada, sugestões iniciais e interface adaptável a celular e desktop.
-- Área de configuração para conectar um backend de Claude Code.
+- Chat nativo com histórico persistido localmente em Room.
+- API keys armazenadas com AndroidX Security Crypto.
+- Respostas em streaming SSE para APIs compatíveis.
+- Provedores configuráveis: Anthropic Claude, Groq, OpenAI, endpoints OpenAI-compatible e endpoints locais (por exemplo, Ollama/LM Studio).
+- Modelos predefinidos e campos para adicionar modelos/endpoints próprios.
+- Configuração opcional de um backend do Claude Code.
+- GitHub Actions compila um APK de depuração a cada alteração relevante e publica o artefato `Nexus-AI-debug`.
 
-## Modelos predefinidos
+### Baixar o APK
 
-A lista inclui modelos de Claude, GPT-OSS, Qwen, Kimi, DeepSeek, Gemma e GPT-4o mini. A disponibilidade depende do provedor, da conta, do acesso ao modelo e do ID de modelo vigente. Se um ID não estiver disponível na sua conta, cadastre o ID suportado pelo seu provedor em **Modelos e provedores**.
+Abra **Actions → Nexus Android APK → execução mais recente → Artifacts → Nexus-AI-debug** no GitHub:
+https://github.com/F1N0ZENIX/Nexus/actions/workflows/android-apk.yml
 
-Os modelos exibidos não são executados localmente nesta versão. Para execução offline, é necessário desenvolver um runtime Android (por exemplo, LiteRT ou ONNX Runtime) e disponibilizar modelos compatíveis com o dispositivo.
+O artefato é um APK debug instalável, não uma versão de lançamento assinada para distribuição. O primeiro build pode levar alguns minutos.
 
-## Configurar
+## Configurar modelos
 
-1. Abra a aplicação pelo GitHub Pages ou sirva os arquivos em um servidor HTTPS.
-2. Abra **Modelos e provedores**.
-3. Configure a chave do provedor escolhido e confirme o endpoint.
-4. Selecione o modelo no topo do chat e envie uma mensagem.
+1. Instale o APK e abra Configurações.
+2. Escolha o provedor, informe a chave API quando necessária, URL base e ID exato do modelo.
+3. Salve e selecione o modelo no seletor do chat.
 
-### Chaves API e segurança
+Os modelos e seus IDs disponíveis podem mudar por provedor e plano. O app não inclui chaves pagas. O uso das APIs pode gerar custos.
 
-Nesta versão, as chaves são armazenadas no armazenamento local do navegador (`localStorage`). Isso é adequado apenas para uso pessoal e testes: qualquer pessoa com acesso ao navegador ou a scripts executados na mesma origem pode potencialmente obtê-las. Não coloque chaves em um site público ou dispositivo compartilhado.
+## Modelos locais
 
-Para produção, mova as chamadas a provedores para um backend autenticado, guarde segredos no servidor e aplique limites de uso por usuário. Chamadas diretas do navegador também podem ser bloqueadas por CORS. Não desative proteções de segurança para contornar isso.
+O app pode conectar-se a servidores compatíveis com OpenAI rodando na rede local. Para um celular físico, use o IP local do computador e certifique-se de que o servidor aceite conexões da rede. `10.0.2.2` só é o endereço usual do host no emulador Android.
+
+**Limitação:** os pesos do modelo não estão embutidos no APK; inferência totalmente offline no próprio telefone ainda não está integrada. Claude também não é um modelo open-source que possa ser empacotado localmente.
+
+Mais detalhes: [LOCAL_MODELS.md](LOCAL_MODELS.md).
 
 ## Claude Code
 
-Projeto oficial: https://github.com/anthropics/claude-code
+Claude Code é um agente/CLI executado em computador ou servidor, não um modelo Android embutido. Há um bridge Node.js opcional em [backend/](backend/README.md). Ele exige que Claude Code já esteja instalado e autenticado no computador, e que você configure um token. O modo padrão do bridge é `plan`, para reduzir ações de escrita. Não exponha o servidor à internet sem controles fortes de segurança.
 
-Claude Code é um agente de programação que roda em um ambiente de terminal. Não é um modelo de pesos abertos nem uma biblioteca Android que possa ser incluída diretamente num HTML ou APK. A interface permite registrar a URL de um backend que você controla, mas **a integração só funcionará depois que esse backend for implementado e implantado**.
+## Build local
 
-Um backend seguro deverá, no mínimo:
+Requisitos: JDK 17 e Gradle 8.9.
 
-- executar Claude Code em ambiente isolado, com diretórios de trabalho explicitamente permitidos;
-- autenticar chamadas e proteger credenciais;
-- pedir aprovação antes de executar comandos ou gravar alterações;
-- restringir ferramentas e operações de shell;
-- impor limites de tempo, tamanho, uso e custos;
-- nunca expor chaves ou permitir acesso anônimo ao agente.
+```bash
+gradle assembleDebug
+```
 
-Documentação oficial do SDK: https://docs.anthropic.com/pt/docs/claude-code/sdk
+APK gerado em `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Limitações conhecidas
+## Segurança e limitações
 
-- O histórico e as configurações ficam no navegador, não em Room Database.
-- A interface não inclui ainda um runtime de modelos locais.
-- Claude Code exige um backend separado; configurar a URL não cria esse servidor.
-- O teste e as chamadas diretas de API dependem de CORS e das políticas do provedor.
-- Esta versão não deve ser tratada como cliente seguro para distribuição pública com chaves pessoais.
-
-## Licença
-
-Consulte os termos e licenças dos serviços e modelos utilizados. Claude Code é um projeto separado mantido pela Anthropic: https://github.com/anthropics/claude-code
+- As chaves são cifradas no armazenamento privado do Android; não compartilhe o dispositivo desbloqueado nem o APK com dados pessoais exportados.
+- Os endpoints locais em HTTP devem ser usados apenas em uma rede confiável.
+- A conexão a provedores externos requer internet.
+- A compatibilidade depende do formato de streaming e do endpoint do provedor.
+- O app foi preparado para build automatizado; o APK precisa ser testado em dispositivo real antes de considerar a versão estável.
