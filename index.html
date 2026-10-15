@@ -1,378 +1,80 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus AI</title>
-    <!-- Biblioteca para transformar Markdown em HTML bonito -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        html, body { width: 100%; height: 100%; background-color: #0d0d0d; overflow: hidden; }
-        
-        .app-container { width: 100vw; height: 100dvh; background: linear-gradient(180deg, #121212 0%, #0a0a0a 100%); display: flex; flex-direction: column; }
-        
-        header { background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(10px); padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; flex-shrink: 0; }
-        .logo { color: #ccc; font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-        .icon-logo { font-size: 28px; color: #7b79ff; transform: rotate(-45deg); }
-        .ai-text { color: #7b79ff; }
-        .header-actions { display: flex; gap: 10px; }
-        .icon-btn { background: #2a2a2a; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 18px; color: white; cursor: pointer; display: flex; justify-content: center; align-items: center; }
-        .icon-btn:hover { background: #7b79ff; }
-        
-        .chat-area { flex: 1; overflow-y: auto; padding: 25px; display: flex; flex-direction: column; gap: 15px; scroll-behavior: smooth; max-width: 900px; width: 100%; margin: 0 auto; }
-        
-        /* Mensagens e Markdown */
-        .msg { max-width: 90%; padding: 12px 16px; font-size: 15px; line-height: 1.6; word-wrap: break-word; border-radius: 18px; animation: popIn 0.3s ease-out; }
-        @keyframes popIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .msg.user { align-self: flex-end; background: linear-gradient(135deg, #7b79ff, #5e5ce6); color: white; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(123, 121, 255, 0.3); white-space: pre-wrap; }
-        
-        /* Estilo do Conteúdo Markdown (Bot) */
-        .msg.bot { align-self: flex-start; background: #1e1e1e; color: #ddd; border: 1px solid #2a2a2a; border-bottom-left-radius: 4px; width: 100%; }
-        .msg.thinking { color: #888; font-style: italic; background: transparent; border: none; }
-        
-        /* Tabelas, Listas e Negrito dentro do Markdown */
-        .msg.bot table { border-collapse: collapse; width: 100%; margin: 10px 0; display: block; overflow-x: auto; }
-        .msg.bot th, .msg.bot td { border: 1px solid #555; padding: 8px 12px; text-align: left; }
-        .msg.bot th { background-color: #333; color: white; }
-        .msg.bot tr:nth-child(even) { background-color: #2a2a2a; }
-        
-        .msg.bot strong { color: #fff; }
-        .msg.bot ul, .msg.bot ol { padding-left: 25px; margin: 10px 0; }
-        .msg.bot p { margin-bottom: 10px; }
-        .msg.bot a { color: #7b79ff; }
-        
-        /* Bloco de Código */
-        .code-block { margin-top: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 12px; overflow: hidden; }
-        .code-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #161b22; border-bottom: 1px solid #30363d; font-size: 12px; color: #8b949e; font-weight: bold; }
-        .copy-btn { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
-        .copy-btn:hover { background: #7b79ff; color: white; }
-        .copy-btn.copied { background: #238636; color: white; }
-        pre { margin: 0; padding: 15px; font-family: 'Consolas', monospace; font-size: 13px; color: #c9d1d9; white-space: pre; overflow-x: auto; }
-        
-        .input-area { background: #121212; padding: 15px 20px; border-top: 1px solid #222; display: flex; justify-content: center; flex-shrink: 0; }
-        .input-wrapper { width: 100%; max-width: 900px; background: #1e1e1e; border-radius: 30px; display: flex; align-items: center; padding: 5px 15px; border: 1px solid #2a2a2a; }
-        .input-wrapper input { flex: 1; background: transparent; border: none; color: white; padding: 12px 0; outline: none; font-size: 15px; }
-        .btn-send { background: #7b79ff; border: none; border-radius: 50%; width: 40px; height: 40px; color: white; font-size: 20px; cursor: pointer; }
-        
-        /* Menu Modal */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; background: #0d0d0d; z-index: 100; display: none; flex-direction: column; transform: translateX(100%); transition: transform 0.3s; }
-        .modal.open { display: flex; transform: translateX(0); }
-        .modal-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
-        .modal-body { flex: 1; overflow-y: auto; padding: 20px; max-width: 500px; margin: 0 auto; width: 100%; }
-        .menu-btn { background: #1e1e1e; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: left; width: 100%; margin-bottom: 10px; }
-        .menu-btn:hover { background: #7b79ff; }
-        .menu-btn.danger { color: #ff6b6b; }
-        .menu-btn.danger:hover { background: #ff6b6b; color: white; }
-        .input-chave { background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 10px; padding: 15px; color: white; width: 100%; margin-bottom: 15px; outline: none; }
-        
-        .history-item { background: #1a1a1a; border-radius: 10px; padding: 12px; margin-bottom: 8px; cursor: pointer; color: #ccc; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-        .history-item:hover, .history-item.active { background: #252525; border: 1px solid #7b79ff; }
-        .history-item .delete { background: transparent; border: none; color: #666; cursor: pointer; }
-        .history-item .delete:hover { color: #ff6b6b; }
-    </style>
-</head>
-<body>
-
-    <div class="app-container">
-        <header>
-            <div class="logo"><span class="icon-logo">⌃</span> NEXUS <span class="ai-text">AI</span></div>
-            <div class="header-actions"><button class="icon-btn" onclick="toggleModal(true)">☰</button></div>
-        </header>
-        
-        <main class="chat-area" id="chat-area"></main>
-        
-        <footer class="input-area">
-            <div class="input-wrapper">
-                <input type="text" id="user-input" placeholder="Digite sua mensagem...">
-                <button class="btn-send" onclick="sendMessage()">↑</button>
-            </div>
-        </footer>
-
-        <div class="modal" id="menu-modal">
-            <div class="modal-header">
-                <div class="logo" style="font-size: 20px;"><span class="icon-logo">⌃</span> Configurações</div>
-                <button class="icon-btn" onclick="toggleModal(false)">✕</button>
-            </div>
-            <div class="modal-body">
-                <button class="menu-btn" onclick="goToScreen('key')">🔑 Chave API</button>
-                <button class="menu-btn" onclick="goToScreen('models')">🧠 Escolher Modelo</button>
-                <button class="menu-btn danger" onclick="clearAllData()">🗑️ Apagar Dados</button>
-                
-                <div id="sub-screen-key" style="display: none;">
-                    <input type="password" id="api-key-input" class="input-chave" placeholder="gsk_...">
-                    <button class="menu-btn" onclick="saveKey()">Salvar</button>
-                    <p id="status-key" style="color: #7b79ff; font-size: 12px; text-align: center;"></p>
-                </div>
-
-                <div id="sub-screen-models" style="display: none;">
-                    <div id="mobile-model-list"></div>
-                </div>
-
-                <div style="margin-top: 20px; border-top: 1px solid #222; padding-top: 20px;">
-                    <p style="color: white; font-weight: bold; margin-bottom: 10px;">Conversas:</p>
-                    <button class="menu-btn" onclick="createNewChat()" style="text-align: center; background: #7b79ff;">+ Nova Conversa</button>
-                    <div id="mobile-history-list"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Configuração
-        const API_URL = "https://api.groq.com/openai/v1/chat/completions";
-        let apiKey = localStorage.getItem('groq_api_key') || '';
-        let currentModel = 'openai/gpt-oss-20b';
-        
-        const MODELS = [
-            { id: 'openai/gpt-oss-20b', name: 'OpenAI GPT-OSS 20B' },
-            { id: 'openai/gpt-oss-120b', name: 'OpenAI GPT-OSS 120B' },
-            { id: 'moonshotai/kimi-k2-instruct', name: 'Kimi K2 Instruct' },
-            { id: 'qwen/qwen3-32b', name: 'Qwen 3 32B' },
-            { id: 'deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 Qwen 32B' },
-            { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B' },
-            { id: 'gemma2-9b-it', name: 'Gemma 2 9B' }
-        ];
-
-        let chats = JSON.parse(localStorage.getItem('nexus_chats')) || [];
-        let currentChatId = localStorage.getItem('nexus_current_chat') || null;
-
-        // Inicializar Marked (configuração para segurança)
-        marked.setOptions({
-            breaks: true, // Quebras de linha viram <br>
-            gfm: true     // Suporte a tabelas
-        });
-
-        function toggleModal(open) {
-            const modal = document.getElementById('menu-modal');
-            if (open) modal.classList.add('open');
-            else modal.classList.remove('open');
-        }
-
-        function goToScreen(screen) {
-            document.getElementById('sub-screen-key').style.display = 'none';
-            document.getElementById('sub-screen-models').style.display = 'none';
-            if (screen === 'key') document.getElementById('sub-screen-key').style.display = 'block';
-            if (screen === 'models') document.getElementById('sub-screen-models').style.display = 'block';
-        }
-
-        // Renderizar Markdown com blocos de código
-        function renderMarkdown(text) {
-            // Divide em partes de código e texto
-            const parts = text.split(/(```[\s\S]*?```)/g);
-            const container = document.createElement('div');
-
-            parts.forEach(part => {
-                if (part.startsWith('```') && part.endsWith('```')) {
-                    const lines = part.split('\n');
-                    const lang = lines[0].replace('```', '').trim() || 'código';
-                    const code = lines.slice(1, -1).join('\n');
-
-                    const codeBlock = document.createElement('div');
-                    codeBlock.className = 'code-block';
-                    
-                    const header = document.createElement('div');
-                    header.className = 'code-header';
-                    header.innerHTML = `<span>${lang}</span>`;
-                    
-                    const copyBtn = document.createElement('button');
-                    copyBtn.className = 'copy-btn';
-                    copyBtn.innerText = 'Copiar';
-                    copyBtn.onclick = async () => {
-                        try {
-                            await navigator.clipboard.writeText(code);
-                            copyBtn.innerText = 'Copiado!';
-                            copyBtn.classList.add('copied');
-                            setTimeout(() => { copyBtn.innerText = 'Copiar'; copyBtn.classList.remove('copied'); }, 2000);
-                        } catch (e) {}
-                    };
-                    header.appendChild(copyBtn);
-
-                    const pre = document.createElement('pre');
-                    pre.textContent = code;
-                    codeBlock.appendChild(header);
-                    codeBlock.appendChild(pre);
-                    container.appendChild(codeBlock);
-                } else {
-                    // Converte texto normal para HTML usando Marked
-                    const div = document.createElement('div');
-                    div.innerHTML = marked.parse(part);
-                    container.appendChild(div);
-                }
-            });
-
-            return container;
-        }
-
-        function addMessage(content, type) {
-            const chatArea = document.getElementById('chat-area');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'msg ' + type;
-            
-            if (type === 'bot') {
-                msgDiv.appendChild(renderMarkdown(content));
-            } else {
-                msgDiv.textContent = content;
-            }
-
-            chatArea.appendChild(msgDiv);
-            chatArea.scrollTop = chatArea.scrollHeight;
-            return msgDiv;
-        }
-
-        // Histórico
-        function initializeChats() {
-            if (chats.length === 0 || !currentChatId) createNewChat();
-            else { loadChat(currentChatId); renderHistory(); }
-        }
-
-        function createNewChat() {
-            const newChat = { id: Date.now().toString(), title: "Nova Conversa", model: 'openai/gpt-oss-20b', messages: [] };
-            chats.unshift(newChat);
-            currentChatId = newChat.id;
-            saveChats();
-            loadChat(currentChatId);
-            renderHistory();
-            toggleModal(false);
-        }
-
-        function saveChats() {
-            localStorage.setItem('nexus_chats', JSON.stringify(chats));
-            localStorage.setItem('nexus_current_chat', currentChatId);
-        }
-
-        function loadChat(chatId) {
-            const chat = chats.find(c => c.id === chatId);
-            if (!chat) return;
-            currentChatId = chatId;
-            currentModel = chat.model;
-            const chatArea = document.getElementById('chat-area');
-            chatArea.innerHTML = ''; 
-            chat.messages.forEach(msg => addMessage(msg.content, msg.role === 'user' ? 'user' : 'bot'));
-            if (chat.messages.length === 0) addMessage("Olá, eu sou a Nexus, como posso ajudar? 👋", 'bot');
-            renderHistory(); 
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('mobile-history-list');
-            list.innerHTML = '';
-            chats.forEach(chat => {
-                const item = document.createElement('div');
-                item.className = 'history-item' + (chat.id === currentChatId ? ' active' : '');
-                const titleDiv = document.createElement('div');
-                titleDiv.style.flex = '1';
-                titleDiv.style.overflow = 'hidden';
-                titleDiv.style.textOverflow = 'ellipsis';
-                titleDiv.style.whiteSpace = 'nowrap';
-                titleDiv.innerText = chat.title;
-                titleDiv.ondblclick = () => renameChat(chat.id);
-                const delBtn = document.createElement('button');
-                delBtn.className = 'delete';
-                delBtn.innerText = '🗑️';
-                delBtn.onclick = (e) => { e.stopPropagation(); deleteChat(chat.id); };
-                item.onclick = () => loadChat(chat.id);
-                item.appendChild(titleDiv);
-                item.appendChild(delBtn);
-                list.appendChild(item);
-            });
-        }
-
-        function renameChat(chatId) {
-            const chat = chats.find(c => c.id === chatId);
-            const newTitle = prompt("Renomear conversa:", chat.title);
-            if (newTitle) { chat.title = newTitle; saveChats(); renderHistory(); }
-        }
-
-        function deleteChat(chatId) {
-            if (confirm("Excluir esta conversa?")) {
-                chats = chats.filter(c => c.id !== chatId);
-                if (currentChatId === chatId) {
-                    if (chats.length > 0) loadChat(chats[0].id);
-                    else createNewChat();
-                }
-                saveChats();
-            }
-        }
-
-        function clearAllData() {
-            if (confirm("Apagar TODOS os dados?")) { localStorage.clear(); location.reload(); }
-        }
-
-        function saveKey() {
-            const input = document.getElementById('api-key-input').value.trim();
-            if (input) {
-                apiKey = input;
-                localStorage.setItem('groq_api_key', apiKey);
-                document.getElementById('status-key').innerText = "✅ Chave salva!";
-                setTimeout(() => toggleModal(false), 800);
-            }
-        }
-
-        function setModel(modelId) {
-            currentModel = modelId;
-            const chat = chats.find(c => c.id === currentChatId);
-            if (chat) { chat.model = modelId; saveChats(); }
-            toggleModal(false);
-        }
-
-        const mobileList = document.getElementById('mobile-model-list');
-        MODELS.forEach(model => {
-            const btn = document.createElement('button');
-            btn.className = 'menu-btn' + (currentModel === model.id ? ' active' : '');
-            btn.innerText = model.name;
-            btn.onclick = () => setModel(model.id);
-            mobileList.appendChild(btn);
-        });
-
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const userText = input.value.trim();
-            if (!userText) return;
-            if (!apiKey) { alert("Configure sua Chave API!"); toggleModal(true); goToScreen('key'); return; }
-
-            input.value = '';
-            addMessage(userText, 'user');
-
-            const chat = chats.find(c => c.id === currentChatId);
-            if (chat) {
-                chat.messages.push({ role: 'user', content: userText });
-                if (chat.title === "Nova Conversa") chat.title = userText.substring(0, 30) + (userText.length > 30 ? "..." : "");
-                saveChats();
-                renderHistory();
-            }
-
-            const thinkingMsg = addMessage('Digitando...', 'bot thinking');
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({ model: currentModel, messages: chat.messages })
-                });
-
-                if (!response.ok) throw new Error((await response.json()).error.message || "Erro na API");
-
-                const data = await response.json();
-                const botReply = data.choices[0].message.content;
-
-                thinkingMsg.classList.remove('thinking');
-                thinkingMsg.innerHTML = '';
-                thinkingMsg.appendChild(renderMarkdown(botReply));
-
-                if (chat) { chat.messages.push({ role: 'assistant', content: botReply }); saveChats(); renderHistory(); }
-            } catch (error) {
-                thinkingMsg.classList.remove('thinking');
-                thinkingMsg.style.color = 'red';
-                thinkingMsg.innerText = "Erro: " + error.message;
-            }
-        }
-
-        document.getElementById('user-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        initializeChats();
-    </script>
-</body>
-</html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090a0d"><meta name="description" content="Nexus AI — seus modelos, suas chaves, seu espaço de trabalho.">
+<title>Nexus AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script><script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+<style>
+:root{color-scheme:dark;--bg:#090a0d;--panel:#101216;--panel2:#171a20;--line:#252932;--muted:#9298a5;--text:#f4f5f7;--accent:#d7ff64;--accentText:#10130a;--radius:18px}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px 'DM Sans',sans-serif;height:100dvh;overflow:hidden}button,input,textarea,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.app{height:100dvh;display:grid;grid-template-columns:260px minmax(0,1fr);background:radial-gradient(ellipse at 55% -20%,#20251b 0,transparent 45%),var(--bg)}.sidebar{border-right:1px solid var(--line);background:#0c0d10;display:flex;flex-direction:column;padding:22px 14px;min-height:0}.brand{display:flex;align-items:center;gap:10px;padding:0 9px 24px;font:700 21px 'Space Grotesk',sans-serif;letter-spacing:-.7px}.brand-mark{width:28px;height:28px;border-radius:9px;background:var(--accent);color:#111;display:grid;place-items:center;font-size:17px}.brand span:last-child{color:var(--accent)}.new-chat,.primary{border:0;background:var(--accent);color:var(--accentText);font-weight:700;border-radius:12px;padding:12px 14px}.new-chat{text-align:left;display:flex;align-items:center;gap:10px;margin:0 3px 23px}.side-label{font-size:10px;font-weight:700;letter-spacing:1.6px;color:#717783;padding:0 10px 10px}.history{overflow:auto;flex:1}.history-item{display:flex;align-items:center;gap:8px;padding:10px;border-radius:10px;color:#c4c7ce;cursor:pointer;margin-bottom:3px}.history-item:hover,.history-item.active{background:var(--panel2);color:white}.history-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.del{border:0;background:none;color:#777;padding:2px}.side-bottom{border-top:1px solid var(--line);padding-top:13px;display:grid;gap:6px}.nav-btn{background:transparent;border:0;color:#b6bbc5;text-align:left;border-radius:10px;padding:11px;display:flex;align-items:center;gap:10px}.nav-btn:hover{background:var(--panel2);color:white}.workspace{min-width:0;display:flex;flex-direction:column;position:relative}.topbar{height:70px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid #1e2128;background:#0b0c0fbb;backdrop-filter:blur(18px)}.top-left{display:flex;align-items:center;gap:12px;min-width:0}.model-select{max-width:min(42vw,320px);border:1px solid var(--line);border-radius:10px;background:var(--panel);color:white;padding:9px 12px}.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}.dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}.icon-btn{width:38px;height:38px;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:#e5e7eb}.chat-scroll{flex:1;overflow:auto;scroll-behavior:smooth}.chat{max-width:850px;width:100%;margin:0 auto;padding:30px 25px 22px;display:flex;flex-direction:column;gap:22px;min-height:100%}.welcome{margin:auto 0;display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 0 45px}.orb{width:58px;height:58px;border:1px solid #3c4530;background:radial-gradient(circle at 30% 25%,#edffbb,#c7f45a 38%,#485b25 100%);border-radius:20px;display:grid;place-items:center;color:#10130a;font-size:28px;box-shadow:0 0 60px #c9ff5c1a;margin-bottom:25px}.welcome h1{font:600 clamp(27px,4vw,39px) 'Space Grotesk',sans-serif;letter-spacing:-1.6px;margin:0 0 12px}.welcome h1 span{color:var(--accent)}.welcome p{color:var(--muted);max-width:460px;line-height:1.7;margin:0 0 25px}.suggestions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;width:min(100%,550px)}.suggestion{background:#111318;border:1px solid var(--line);border-radius:13px;color:#d6d9df;text-align:left;padding:14px;line-height:1.4}.suggestion:hover{border-color:#667044;background:#171b13}.suggestion b{display:block;font-size:13px;margin-bottom:5px}.suggestion small{color:var(--muted);font-size:12px}.msg{display:flex;gap:12px;align-items:flex-start;animation:appear .2s ease}.avatar{width:30px;height:30px;border-radius:10px;background:#20242b;display:grid;place-items:center;flex-shrink:0;font-size:13px}.msg.assistant .avatar{background:var(--accent);color:#10130a}.bubble{min-width:0;max-width:100%;line-height:1.75;font-size:14px;overflow-wrap:anywhere}.msg.user .bubble{background:#1a1e25;border:1px solid #2a2f39;border-radius:4px 14px 14px 14px;padding:10px 14px;white-space:pre-wrap}.bubble p{margin:0 0 12px}.bubble p:last-child{margin-bottom:0}.bubble h1,.bubble h2,.bubble h3{font-family:'Space Grotesk',sans-serif;line-height:1.3}.bubble pre{overflow:auto;background:#08090b;border:1px solid var(--line);border-radius:12px;padding:14px}.bubble code{font-family:ui-monospace,monospace;font-size:12px}.bubble :not(pre)>code{background:#242832;border-radius:5px;padding:2px 5px}.bubble a{color:var(--accent)}.typing{color:var(--muted);display:flex;gap:5px;padding:8px 0}.typing i{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}@keyframes pulse{50%{opacity:.25;transform:translateY(-3px)}}@keyframes appear{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}.composer-wrap{padding:12px 22px 20px;background:linear-gradient(transparent,#090a0d 25%);flex-shrink:0}.composer{max-width:850px;margin:auto;border:1px solid #343944;background:#15171c;border-radius:18px;padding:10px 11px 8px;box-shadow:0 10px 50px #0005}.composer textarea{display:block;width:100%;resize:none;min-height:35px;max-height:150px;border:0;background:transparent;color:white;padding:6px 8px;outline:none;line-height:1.5}.composer-bottom{display:flex;align-items:center;justify-content:space-between;padding:5px 2px 0 6px}.hint{color:#777e8a;font-size:11px}.send{background:var(--accent);border:0;color:#10130a;width:36px;height:36px;border-radius:12px;font-size:19px;font-weight:700}.send:disabled{opacity:.4}.footnote{text-align:center;color:#646a74;font-size:10px;margin-top:10px}.overlay{position:fixed;inset:0;background:#0009;z-index:10;display:none;justify-content:flex-end}.overlay.open{display:flex}.drawer{width:min(480px,100%);height:100%;overflow:auto;background:#0f1115;border-left:1px solid var(--line);padding:24px;animation:slide .2s ease}@keyframes slide{from{transform:translateX(20px);opacity:.5}to{transform:none;opacity:1}}.drawer-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:23px}.drawer h2{font:600 23px 'Space Grotesk',sans-serif;margin:0}.drawer h3{font-size:13px;margin:0 0 8px}.section{padding:17px 0;border-top:1px solid var(--line)}.section p,.muted{color:var(--muted);font-size:12px;line-height:1.6}.field{display:grid;gap:7px;margin:12px 0}.field label{font-size:12px;color:#c9cdd5}.field input,.field select,.field textarea{width:100%;border:1px solid #30343e;background:#171a20;border-radius:10px;padding:11px 12px;color:white;min-width:0}.field input::placeholder{color:#696f7b}.row{display:flex;gap:9px;align-items:center}.row>*{flex:1;min-width:0}.secondary,.danger{border:1px solid #343945;background:#1a1d24;color:#e2e5eb;border-radius:10px;padding:10px 12px}.danger{color:#ff9999}.provider-card{border:1px solid var(--line);border-radius:13px;padding:13px;margin:9px 0;background:#13151a}.provider-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.pill{font-size:10px;color:var(--accent);background:#c9ff5c12;border:1px solid #c9ff5c30;border-radius:30px;padding:4px 8px}.provider-actions{display:flex;gap:7px;margin-top:10px}.provider-actions button{font-size:11px;padding:7px 9px}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#e2ff9a;color:#14180c;padding:11px 16px;border-radius:10px;font-weight:700;z-index:30;display:none;max-width:90%;box-shadow:0 8px 30px #0008}.mobile-menu{display:none}
+@media(max-width:760px){.app{grid-template-columns:1fr}.sidebar{display:none}.mobile-menu{display:inline-grid}.topbar{height:62px;padding:0 13px}.chat{padding:23px 15px 16px}.composer-wrap{padding:8px 10px 12px}.suggestions{grid-template-columns:1fr}.welcome{padding:20px 0}.status{display:none}.model-select{max-width:55vw}.drawer{padding:20px}.footnote{font-size:9px}}
+</style></head>
+<body><div class="app">
+<aside class="sidebar"><div class="brand"><div class="brand-mark">✳</div>NEXUS <span>AI</span></div><button class="new-chat" id="newChat">＋ <span>Nova conversa</span></button><div class="side-label">RECENTES</div><div class="history" id="history"></div><div class="side-bottom"><button class="nav-btn" id="openModels">◈　 Modelos e provedores</button><button class="nav-btn" id="openSettings">⚙　 Configurações</button><button class="nav-btn" id="openClaudeCode">⌘　 Claude Code</button></div></aside>
+<main class="workspace"><header class="topbar"><div class="top-left"><button class="icon-btn mobile-menu" id="mobileMenu" aria-label="Abrir menu">☰</button><select class="model-select" id="modelSelect" aria-label="Modelo ativo"></select><div class="status"><span class="dot"></span><span id="providerStatus">Pronto para conversar</span></div></div><button class="icon-btn" id="topSettings" aria-label="Configurações">⚙</button></header><div class="chat-scroll" id="chatScroll"><div class="chat" id="chat"></div></div><div class="composer-wrap"><div class="composer"><textarea id="prompt" rows="1" placeholder="Pergunte qualquer coisa à Nexus..." aria-label="Mensagem"></textarea><div class="composer-bottom"><span class="hint" id="composerHint">Enter para enviar · Shift + Enter para nova linha</span><button class="send" id="send" aria-label="Enviar mensagem">↑</button></div></div><div class="footnote">Confira as respostas importantes. As chaves ficam neste navegador e não são enviadas à Nexus.</div></div></main></div>
+<div class="overlay" id="overlay"><section class="drawer"><div class="drawer-head"><h2 id="drawerTitle">Configurações</h2><button class="icon-btn" id="closeDrawer" aria-label="Fechar">✕</button></div><div id="drawerBody"></div></section></div><div class="toast" id="toast"></div>
+<script>
+const $=id=>document.getElementById(id);
+const DEFAULT_MODELS=[
+{id:'claude-sonnet-4-5',name:'Claude Sonnet',provider:'anthropic',desc:'Equilíbrio entre velocidade e raciocínio'},
+{id:'claude-haiku-4-5',name:'Claude Haiku',provider:'anthropic',desc:'Rápido para tarefas do dia a dia'},
+{id:'claude-opus-4-1',name:'Claude Opus',provider:'anthropic',desc:'Raciocínio avançado (se disponível na conta)'},
+{id:'openai/gpt-oss-20b',name:'GPT-OSS 20B',provider:'groq',desc:'Modelo aberto, rápido'},
+{id:'openai/gpt-oss-120b',name:'GPT-OSS 120B',provider:'groq',desc:'Modelo aberto, mais capaz'},
+{id:'qwen/qwen3-32b',name:'Qwen 3 32B',provider:'groq',desc:'Multilíngue e programação'},
+{id:'moonshotai/kimi-k2-instruct',name:'Kimi K2',provider:'groq',desc:'Assistente geral e código'},
+{id:'deepseek-r1-distill-llama-70b',name:'DeepSeek R1 Distill',provider:'groq',desc:'Raciocínio e resolução de problemas'},
+{id:'gemma2-9b-it',name:'Gemma 2 9B',provider:'groq',desc:'Modelo compacto'},
+{id:'gpt-4o-mini',name:'GPT-4o mini',provider:'openai',desc:'Modelo econômico da OpenAI'},
+{id:'custom-model',name:'Modelo personalizado',provider:'custom',desc:'Seu endpoint OpenAI compatível'}
+];
+const DEFAULT_PROVIDERS=[
+{id:'anthropic',name:'Anthropic Claude',baseUrl:'https://api.anthropic.com/v1/messages',key:'',type:'anthropic',enabled:true},
+{id:'groq',name:'Groq',baseUrl:'https://api.groq.com/openai/v1/chat/completions',key:'',type:'openai',enabled:true},
+{id:'openai',name:'OpenAI',baseUrl:'https://api.openai.com/v1/chat/completions',key:'',type:'openai',enabled:true},
+{id:'custom',name:'Outro provedor / endpoint compatível',baseUrl:'',key:'',type:'openai',enabled:true}
+];
+let providers=load('nexus_providers',DEFAULT_PROVIDERS), models=load('nexus_models',DEFAULT_MODELS), chats=load('nexus_chats',[]), currentId=localStorage.getItem('nexus_current_chat')||null, activeModel=localStorage.getItem('nexus_active_model')||'openai/gpt-oss-20b', busy=false;
+let claudeCode=load('nexus_claude_code',{url:'',enabled:false});
+function load(k,fallback){try{const v=JSON.parse(localStorage.getItem(k));return v??structuredClone(fallback)}catch{return structuredClone(fallback)}}
+function save(){localStorage.setItem('nexus_providers',JSON.stringify(providers));localStorage.setItem('nexus_models',JSON.stringify(models));localStorage.setItem('nexus_chats',JSON.stringify(chats));localStorage.setItem('nexus_current_chat',currentId);localStorage.setItem('nexus_active_model',activeModel);localStorage.setItem('nexus_claude_code',JSON.stringify(claudeCode))}
+function current(){return chats.find(c=>c.id===currentId)}
+function model(){return models.find(m=>m.id===activeModel)||models[0]}
+function providerFor(m=model()){return providers.find(p=>p.id===m.provider)||providers.find(p=>p.id==='custom')}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2600)}
+function safeMarkdown(s){const html=window.marked?marked.parse(s):esc(s).replace(/\n/g,'<br>');return window.DOMPurify?DOMPurify.sanitize(html):esc(s)}
+function renderMessage(m){const el=document.createElement('div');el.className='msg '+(m.role==='user'?'user':'assistant');const av=document.createElement('div');av.className='avatar';av.textContent=m.role==='user'?'Você':'✳';const bubble=document.createElement('div');bubble.className='bubble';if(m.role==='user')bubble.textContent=m.content;else bubble.innerHTML=safeMarkdown(m.content);el.append(av,bubble);return el}
+function renderChat(){const area=$('chat');area.innerHTML='';const c=current();if(!c||!c.messages.length){const w=document.createElement('div');w.className='welcome';w.innerHTML='<div class="orb">✳</div><h1>Uma ideia de cada vez.<br><span>Vamos começar?</span></h1><p>Seu espaço para pensar, criar, estudar e construir. Escolha um modelo e converse do seu jeito.</p><div class="suggestions"><button class="suggestion" data-prompt="Explique um assunto difícil de um jeito simples"><b>✧ Aprender algo novo</b><small>Explicações claras, passo a passo</small></button><button class="suggestion" data-prompt="Ajude-me a criar um aplicativo Android do zero"><b>⌘ Criar com código</b><small>Planeje e desenvolva um projeto</small></button><button class="suggestion" data-prompt="Organize minhas tarefas em um plano prático"><b>☷ Organizar ideias</b><small>Transforme ideias em um plano</small></button><button class="suggestion" data-prompt="Revise este texto e melhore o português"><b>✎ Escrever melhor</b><small>Revise, resuma ou reescreva</small></button></div>';area.append(w);w.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>{$('prompt').value=b.dataset.prompt;resizePrompt();$('prompt').focus()})}else c.messages.forEach(m=>area.append(renderMessage(m)));area.querySelectorAll('pre').forEach(pre=>{const b=document.createElement('button');b.className='secondary';b.textContent='Copiar código';b.style.marginTop='6px';b.onclick=async()=>{await navigator.clipboard.writeText(pre.innerText);toast('Código copiado')};pre.after(b)});$('chatScroll').scrollTop=$('chatScroll').scrollHeight;renderHistory()}
+function renderHistory(){const list=$('history');list.innerHTML='';chats.forEach(c=>{const row=document.createElement('div');row.className='history-item'+(c.id===currentId?' active':'');const name=document.createElement('div');name.className='history-name';name.textContent=c.title;name.onclick=()=>{currentId=c.id;save();renderChat()};const del=document.createElement('button');del.className='del';del.textContent='×';del.title='Excluir conversa';del.onclick=e=>{e.stopPropagation();if(confirm('Excluir esta conversa?')){chats=chats.filter(x=>x.id!==c.id);if(currentId===c.id)currentId=chats[0]?.id||null;save();renderChat()}};row.append(name,del);list.append(row)})}
+function newChat(){const c={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),title:'Nova conversa',model:activeModel,messages:[]};chats.unshift(c);currentId=c.id;save();renderChat();$('prompt').focus()}
+function refreshModels(){const sel=$('modelSelect');sel.innerHTML='';models.forEach(m=>{const p=providers.find(p=>p.id===m.provider);const o=document.createElement('option');o.value=m.id;o.textContent=(p?.name||m.provider)+' · '+m.name;sel.append(o)});if(!models.some(m=>m.id===activeModel))activeModel=models[0]?.id;sel.value=activeModel;const p=providerFor();$('providerStatus').textContent=p?.key?'Chave configurada · '+(p.name||p.id):'Configure uma chave API para começar';save()}
+function openDrawer(title,html){$('drawerTitle').textContent=title;$('drawerBody').innerHTML=html;$('overlay').classList.add('open')}
+function closeDrawer(){$('overlay').classList.remove('open')}
+function openSettings(){openDrawer('Configurações',`
+<div class="section"><h3>Provedores e chaves API</h3><p>Adicione várias chaves e escolha o provedor no seletor do chat. As chaves são guardadas no armazenamento local deste navegador — não use em dispositivos compartilhados.</p><div id="providers"></div><button class="primary" id="addProvider">＋ Adicionar provedor</button></div>
+<div class="section"><h3>Modelo padrão</h3><div class="field"><label>Modelo ao iniciar uma conversa</label><select id="defaultModel">${models.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.name)+' — '+esc(m.provider)+'</option>').join('')}</select></div><button class="secondary" id="saveDefault">Salvar preferência</button></div>
+<div class="section"><h3>Privacidade</h3><p>O histórico e as chaves são armazenados neste navegador. Para uso público, prefira um backend próprio para guardar credenciais e fazer chamadas à API.</p><button class="danger" id="clearHistory">Apagar todas as conversas</button></div>`);
+renderProviderCards();$('defaultModel').value=activeModel;$('addProvider').onclick=()=>editProvider();$('saveDefault').onclick=()=>{activeModel=$('defaultModel').value;save();refreshModels();toast('Preferência salva')};$('clearHistory').onclick=()=>{if(confirm('Apagar todas as conversas salvas?')){chats=[];currentId=null;save();renderChat();toast('Histórico apagado')}}}
+function renderProviderCards(){const wrap=$('providers');if(!wrap)return;wrap.innerHTML='';providers.forEach(p=>{const card=document.createElement('div');card.className='provider-card';const title=document.createElement('div');title.className='provider-top';title.innerHTML='<strong>'+esc(p.name)+'</strong><span class="pill">'+(p.key?'CHAVE SALVA':'SEM CHAVE')+'</span>';const url=document.createElement('p');url.className='muted';url.textContent=p.baseUrl||'Endpoint ainda não definido';const actions=document.createElement('div');actions.className='provider-actions';const edit=document.createElement('button');edit.className='secondary';edit.textContent='Configurar';edit.onclick=()=>editProvider(p.id);const test=document.createElement('button');test.className='secondary';test.textContent='Testar conexão';test.onclick=()=>testProvider(p.id);const del=document.createElement('button');del.className='danger';del.textContent='Remover';del.onclick=()=>{if(confirm('Remover este provedor e a chave salva?')){providers=providers.filter(x=>x.id!==p.id);models=models.filter(m=>m.provider!==p.id);save();refreshModels();renderProviderCards()}};actions.append(edit,test);if(!['anthropic','groq','openai'].includes(p.id))actions.append(del);card.append(title,url,actions);wrap.append(card)})}
+function editProvider(id){const p=id?providers.find(x=>x.id===id):{id:'custom-'+Date.now(),name:'Meu provedor',baseUrl:'',key:'',type:'openai',enabled:true};openDrawer(id?'Configurar provedor':'Adicionar provedor',`
+<div class="section"><p>Compatível com a API Messages da Anthropic ou com endpoints no formato OpenAI Chat Completions.</p>
+<div class="field"><label>Nome do provedor</label><input id="pName" value="${esc(p.name)}" placeholder="Ex.: OpenRouter, Together, servidor local"></div>
+<div class="field"><label>Tipo de API</label><select id="pType"><option value="anthropic" ${p.type==='anthropic'?'selected':''}>Anthropic Messages API</option><option value="openai" ${p.type!=='anthropic'?'selected':''}>OpenAI compatível</option></select></div>
+<div class="field"><label>URL completa do endpoint</label><input id="pUrl" value="${esc(p.baseUrl)}" placeholder="https://.../v1/chat/completions"></div>
+<div class="field"><label>Chave API</label><input id="pKey" type="password" autocomplete="off" value="${esc(p.key||'')}" placeholder="Cole sua chave aqui"></div>
+<div class="field"><label>ID do modelo (opcional)</label><input id="pModel" placeholder="Ex.: provider/model-name"></div>
+<button class="primary" id="saveProvider">Salvar provedor</button></div>`);
+$('pType').onchange=()=>{if(!$('pUrl').value)$('pUrl').value=$('pType').value==='anthropic'?'https://api.anthropic.com/v1/messages':'https://api.openai.com/v1/chat/completions'};
+$('saveProvider').onclick=()=>{const name=$('pName').value.trim(),url=$('pUrl').value.trim(),key=$('pKey').value.trim(),type=$('pType').value,modelId=$('pModel').value.trim();if(!name||!url){toast('Informe o nome e o endpoint');return}let target=providers.find(x=>x.id===p.id);if(target)Object.assign(target,{name,baseUrl:url,key,type});else{p.name=name;p.baseUrl=url;p.key=key;p.type=type;providers.push(p)}if(modelId&&!models.some(m=>m.id===modelId)){models.push({id:modelId,name:modelId,provider:p.id,desc:'Modelo personalizado'});activeModel=modelId}save();refreshModels();openSettings();toast('Provedor salvo')}}
+async function testProvider(id){const p=providers.find(x=>x.id===id);if(!p)return;if(!p.key){toast('Adicione uma chave antes de testar');return}toast('Testando conexão…');try{if(p.type==='anthropic'){const r=await fetch(p.baseUrl,{method:'POST',headers:{'content-type':'application/json','x-api-key':p.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5',max_tokens:12,messages:[{role:'user',content:'Responda apenas OK'}]})});if(!r.ok)throw Error('HTTP '+r.status+' — verifique chave, permissões e CORS')}else{const r=await fetch(p.baseUrl,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+p.key},body:JSON.stringify({model:models.find(m=>m.provider===p.id)?.id||'gpt-4o-mini',messages:[{role:'user',content:'Responda apenas OK'}],max_tokens:12})});if(!r.ok)throw Error('HTTP '+r.status+' — verifique chave, endpoint e CORS')}toast('Conexão respondeu com sucesso')}catch(e){toast('Falha no teste: '+e.message)}}
+function openModels(){openDrawer('Modelos e provedores',`<div class="section"><p>Modelos padrão e personalizados disponíveis para seleção no topo do chat.</p><div id="modelCards"></div><button class="primary" id="addModel">＋ Adicionar modelo</button></div><div class="section"><p>Modelos locais só funcionam quando um runtime local estiver instalado e conectado. Esta versão web não executa pesos ONNX/TFLite diretamente.</p></div>`);const wrap=$('modelCards');models.forEach(m=>{const d=document.createElement('div');d.className='provider-card';d.innerHTML='<div class="provider-top"><strong>'+esc(m.name)+'</strong><span class="pill">'+esc(m.provider)+'</span></div><p class="muted">'+esc(m.id)+'</p>';wrap.append(d)});$('addModel').onclick=()=>{openDrawer('Adicionar modelo',`<div class="section"><div class="field"><label>Nome</label><input id="mName" placeholder="Meu modelo"></div><div class="field"><label>ID do modelo no provedor</label><input id="mId" placeholder="provider/model-id"></div><div class="field"><label>Provedor</label><select id="mProvider">${providers.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')}</select></div><button class="primary" id="saveModel">Adicionar modelo</button></div>`);$('saveModel').onclick=()=>{const name=$('mName').value.trim(),id=$('mId').value.trim(),provider=$('mProvider').value;if(!name||!id)return toast('Preencha nome e ID');if(models.some(m=>m.id===id&&m.provider===provider))return toast('Modelo já cadastrado');models.push({id,name,provider,desc:'Modelo personalizado'});activeModel=id;save();refreshModels();openModels();toast('Modelo adicionado')}}}
+function openClaudeCode(){openDrawer('Claude Code',`<div class="section"><h3>Agente de programação</h3><p>O <a href="https://github.com/anthropics/claude-code" target="_blank" rel="noopener">Claude Code oficial</a> é uma ferramenta de agente que executa em um ambiente de terminal. Não é uma biblioteca Android e não pode ser embutida diretamente nesta página. Para integrá-lo com segurança, conecte um backend seu que execute o agente e exponha uma API autenticada.</p><div class="field"><label>URL do backend Claude Code</label><input id="ccUrl" value="${esc(claudeCode.url)}" placeholder="https://seu-servidor.example/api/claude-code"></div><div class="field"><label><input id="ccEnabled" type="checkbox" ${claudeCode.enabled?'checked':''} style="width:auto;margin-right:8px">Ativar agente via backend</label></div><button class="primary" id="saveCC">Salvar configuração</button><p>O backend deve autenticar cada utilizador, restringir diretórios, exigir aprovação para alterações e comandos, e nunca expor a chave Anthropic no navegador. Não ative até configurar um servidor confiável.</p><a href="https://github.com/anthropics/claude-code" target="_blank" rel="noopener" style="color:var(--accent)">Abrir repositório oficial ↗</a></div>`);$('saveCC').onclick=()=>{claudeCode={url:$('ccUrl').value.trim(),enabled:$('ccEnabled').checked};save();toast('Configuração do agente salva');closeDrawer()}}
+function resizePrompt(){$('prompt').style.height='auto';$('prompt').style.height=Math.min($('prompt').scrollHeight,150)+'px'}
+async function send(){if(busy)return;const input=$('prompt'),text=input.value.trim();if(!text)return;const m=model(),p=providerFor(m);if(!p?.key){openSettings();toast('Configure a chave API do provedor selecionado');return}let c=current();if(!c){newChat();c=current()}c.model=activeModel;c.messages.push({role:'user',content:text});if(c.title==='Nova conversa')c.title=text.slice(0,38)+(text.length>38?'…':'');input.value='';resizePrompt();busy=true;$('send').disabled=true;save();renderChat();const area=$('chat');const waiting=document.createElement('div');waiting.className='msg assistant';waiting.innerHTML='<div class="avatar">✳</div><div class="typing"><i></i><i></i><i></i><span style="margin-left:5px">Pensando…</span></div>';area.append(waiting);$('chatScroll').scrollTop=$('chatScroll').scrollHeight;
+try{let answer='';if(p.type==='anthropic'){const messages=c.messages.map(x=>({role:x.role,content:x.content}));const res=await fetch(p.baseUrl,{method:'POST',headers:{'content-type':'application/json','x-api-key':p.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:m.id,max_tokens:2048,messages})});const data=await res.json();if(!res.ok)throw Error(data.error?.message||'Erro HTTP '+res.status);answer=(data.content||[]).filter(x=>x.type==='text').map(x=>x.text).join('\n')||'A API não retornou texto.'}else{const res=await fetch(p.baseUrl,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+p.key},body:JSON.stringify({model:m.id,messages:c.messages,max_tokens:2048,stream:false})});const data=await res.json();if(!res.ok)throw Error(data.error?.message||'Erro HTTP '+res.status);answer=data.choices?.[0]?.message?.content;if(Array.isArray(answer))answer=answer.map(x=>x.text||'').join('');if(!answer)throw Error('Resposta vazia do provedor')}c.messages.push({role:'assistant',content:answer});save();waiting.remove();renderChat()}catch(e){waiting.remove();c.messages.push({role:'assistant',content:'**Não consegui concluir a solicitação.**\n\n'+e.message+'\n\nConfira a chave, o modelo e o endpoint. Alguns provedores bloqueiam chamadas diretas do navegador por CORS; nesse caso, use um backend seguro.'});save();renderChat()}finally{busy=false;$('send').disabled=false;input.focus()}}
+$('newChat').onclick=newChat;$('send').onclick=send;$('prompt').addEventListener('input',resizePrompt);$('prompt').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});$('modelSelect').onchange=()=>{activeModel=$('modelSelect').value;save();const c=current();if(c)c.model=activeModel;refreshModels()};$('openSettings').onclick=openSettings;$('topSettings').onclick=openSettings;$('openModels').onclick=openModels;$('openClaudeCode').onclick=openClaudeCode;$('mobileMenu').onclick=openSettings;$('closeDrawer').onclick=closeDrawer;$('overlay').onclick=e=>{if(e.target===$('overlay'))closeDrawer()};window.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+if(!chats.length){const c={id:String(Date.now()),title:'Nova conversa',model:activeModel,messages:[]};chats.push(c);currentId=c.id}else if(!chats.some(c=>c.id===currentId))currentId=chats[0].id;refreshModels();renderChat();
+</script></body></html>
