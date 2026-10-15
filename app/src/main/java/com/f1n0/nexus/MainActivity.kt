@@ -62,6 +62,8 @@ class MainActivity : ComponentActivity() {
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
         )
+        // Remove legacy cloud Kimi credentials from older app versions.
+        prefs.edit().remove("key_Kimi").apply()
         setContent {
             var config by remember { mutableStateOf(loadConfig()) }
             var messages by remember { mutableStateOf(emptyList<ChatMessage>()) }
