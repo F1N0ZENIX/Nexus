@@ -194,10 +194,12 @@ class MainActivity : ComponentActivity() {
                                     if (!streaming && prompt.isNotBlank()) {
                                         val send = prompt.trim(); prompt = ""; error = null; liveAnswer = ""; streaming = true
                                         scope.launch {
-                                            db.messages().insert(ChatMessage(role = "user", content = send))
+                                            if (messages.isEmpty()) db.sessions().rename(activeChatId, send.take(36).ifBlank { "Nova conversa" })
+                                            db.sessions().touch(activeChatId)
+                                            db.messages().insert(ChatMessage(role = "user", content = send, chatId = activeChatId))
                                             try {
                                                 val result = AIClient.stream(config, messages, send) { liveAnswer += it }
-                                                db.messages().insert(ChatMessage(role = "assistant", content = result))
+                                                db.messages().insert(ChatMessage(role = "assistant", content = result, chatId = activeChatId))
                                             } catch (e: Exception) { error = e.message ?: "Falha na conexão." }
                                             finally { streaming = false; liveAnswer = "" }
                                         }
