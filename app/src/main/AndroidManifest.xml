@@ -3,6 +3,8 @@
     <application
         android:allowBackup="false"
         android:label="Nexus AI"
+        android:icon="@drawable/ic_nexus_launcher"
+        android:roundIcon="@drawable/ic_nexus_launcher"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="true"
         android:supportsRtl="true">
