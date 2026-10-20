@@ -1,4 +1,4 @@
-name: Nexus Android APK and Releases
+name: Nexus Ai Android APK and Releases
 
 on:
   push:
@@ -73,7 +73,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
-          name: Nexus release ${{ steps.version.outputs.version }}
+          name: Nexus Ai release ${{ steps.version.outputs.version }}
           body: |
             Release automática do Nexus AI.
             - Versão ${{ steps.version.outputs.version }}
