@@ -2,10 +2,14 @@
 
 Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaque vermelho suave.
 
+## Versão atual
+
+**Nexus Ai release 1.0.4**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
+
 ## Recursos
 
 - **Histórico local de conversas:** chats separados, guardados no banco privado do próprio celular.
-- **Seletor por categorias:** modelos leves, equilibrados, para código, Kimi e instalados.
+- **Seletor por categorias:** modelos leves, equilibrados, para código e instalados.
 - **Tamanho dos modelos:** estimativas de armazenamento para modelos locais; o tamanho real dos modelos instalados vem do Ollama.
 - **Gerenciador do Ollama:** lista os modelos instalados, mostra o espaço usado e permite removê-los do servidor.
 - **Modo local privado:** alternativa Qwen3 4B sem API Kimi ou chave de nuvem.
