@@ -32,6 +32,7 @@ jobs:
           VERSION=$(grep -o 'versionName = "[^"]*"' app/build.gradle.kts | cut -d '"' -f 2)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "apk_name=Nexus AI release $VERSION.apk" >> "$GITHUB_OUTPUT"
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -65,8 +66,8 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Nexus-AI-debug
-          path: Nexus-release.apk
+          name: Nexus-AI-release-${{ steps.version.outputs.version }}
+          path: "${{ steps.version.outputs.apk_name }}"
           if-no-files-found: error
           retention-days: 30
       - name: Publish GitHub Release
@@ -77,10 +78,11 @@ jobs:
           body: |
             Release automática do Nexus AI.
             - Versão ${{ steps.version.outputs.version }}
+            - APK: Nexus AI release ${{ steps.version.outputs.version }}.apk
             - Ícone nativo do aplicativo
             - Histórico local; sem API Kimi integrada
             - Alternativa local Qwen3 4B e gerenciamento de modelos Ollama
             Para atualizações por cima, configure uma chave de assinatura persistente nos Secrets do repositório.
-          files: Nexus-release.apk
+          files: "${{ steps.version.outputs.apk_name }}"
           fail_on_unmatched_files: true
           make_latest: true
