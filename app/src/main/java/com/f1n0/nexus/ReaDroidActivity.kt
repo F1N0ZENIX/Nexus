@@ -79,7 +79,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var apiKey by remember { mutableStateOf(readGroqKey(context)) }
     var model by remember { mutableStateOf("openai/gpt-oss-120b") }
     var modelMenuOpen by remember { mutableStateOf(false) }
-    val freeModels = listOf("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "groq/compound-mini")
+    val freeModels = listOf("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "openai/gpt-oss-safeguard-20b")
     var changePrompt by remember { mutableStateOf("") }
     var aiCode by remember { mutableStateOf("") }
     var sourceCode by remember { mutableStateOf("") }
