@@ -64,7 +64,7 @@ internal object ReaDroidEngine {
             val output = File(smaliRoot, "dex${index + 1}").apply { mkdirs() }
             val dexFile = DexFileFactory.loadDexFile(dex.absolutePath, Opcodes.getDefault())
             val options = BaksmaliOptions().apply { apiLevel = 35 }
-            val ok = Baksmali.disassembleDexFile(dexFile, output.absolutePath, Runtime.getRuntime().availableProcessors().coerceIn(1, 4), options)
+            val ok = Baksmali.disassembleDexFile(dexFile, output, Runtime.getRuntime().availableProcessors().coerceIn(1, 4), options)
             if (!ok) error("Não foi possível descompilar ${dex.name}.")
         }
         File(root, "LEIA-ME.txt").writeText(
@@ -93,7 +93,7 @@ internal object ReaDroidEngine {
             val output = File(compiled, dexName)
             val options = SmaliOptions().apply {
                 apiLevel = 35
-                outputDexFile = output
+                outputDexFile = output.absolutePath
                 jobs = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
                 verboseErrors = true
             }
