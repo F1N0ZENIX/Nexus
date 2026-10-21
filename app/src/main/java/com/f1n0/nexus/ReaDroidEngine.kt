@@ -93,7 +93,7 @@ internal object ReaDroidEngine {
             val output = File(compiled, dexName)
             val options = SmaliOptions().apply {
                 apiLevel = 35
-                outputDexFile = output.absolutePath
+                outputDexFile = output
                 jobs = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
                 verboseErrors = true
             }
