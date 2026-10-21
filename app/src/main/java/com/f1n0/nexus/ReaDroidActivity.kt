@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.security.MessageDigest
+import java.io.File\nimport java.security.MessageDigest
 import java.util.zip.ZipInputStream
 
 private val RDBg = Color(0xFF000000)
@@ -61,7 +61,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var name by remember { mutableStateOf("Nenhum APK selecionado") }
     var report by remember { mutableStateOf<ApkReport?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("A análise é feita localmente no celular.") }
+    var status by remember { mutableStateOf("A análise é feita localmente no celular.") }\n    var workspaceZip by remember { mutableStateOf<File?>(null) }\n    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { target ->\n        val source = workspaceZip\n        if (target != null && source != null) scope.launch {\n            try { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(target)?.use { out -> source.inputStream().use { it.copyTo(out) } } ?: error("Não foi possível salvar o arquivo.") }; status = "Workspace exportado com sucesso." }\n            catch (e: Exception) { status = "Falha ao exportar: " + (e.message ?: "erro") }\n        }\n    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked != null) {
             uri = picked
@@ -156,6 +156,33 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                 items(r.libs.take(100)) { FileItem(it) }
                 item { Text("ESTRUTURA ZIP", color = RDMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold) }
                 items(r.files.take(100)) { FileItem(it) }
+            }
+            item {
+                Surface(color = RDPanel, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text("DESCOMPILAR DEX / EXPORTAR", color = RDRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Extrai os arquivos e converte classes DEX para Smali no próprio celular, sem enviar o APK à internet.", color = RDMuted, fontSize = 12.sp)
+                        Button(
+                            enabled = uri != null && !busy,
+                            onClick = {
+                                val selected = uri ?: return@Button
+                                busy = true
+                                status = "Extraindo e descompilando DEX para Smali…"
+                                scope.launch {
+                                    try {
+                                        workspaceZip = ReaDroidEngine.buildWorkspace(context, selected)
+                                        status = "Workspace pronto. Escolha onde salvar o ZIP."
+                                        exportPicker.launch("ReaDroid-workspace.zip")
+                                    } catch (e: Exception) {
+                                        status = "Falha na descompilação: " + (e.message ?: "erro")
+                                    } finally { busy = false }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = RDRed, contentColor = RDBg)
+                        ) { Text(if (busy) "Processando…" else "Descompilar e exportar workspace", fontWeight = FontWeight.Bold) }
+                    }
+                }
             }
             item {
                 Text("Esta primeira integração cobre inspeção estática básica. JADX, edição de manifesto, Apktool e assinatura ainda não estão incorporados nesta tela.", color = RDMuted, fontSize = 10.sp, lineHeight = 15.sp)
