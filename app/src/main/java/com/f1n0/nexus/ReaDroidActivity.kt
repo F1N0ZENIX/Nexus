@@ -33,6 +33,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.OkHttpClient
+import org.json.JSONArray
+import org.json.JSONObject
 
 private val RDBg = Color(0xFF000000)
 private val RDPanel = Color(0xFF101010)
@@ -64,6 +73,13 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("A análise é feita localmente no celular.") }
     var workspaceZip by remember { mutableStateOf<File?>(null) }
+    var apiKey by remember { mutableStateOf(readOpenRouterKey(context)) }
+    var model by remember { mutableStateOf("openai/gpt-4o-mini") }
+    var changePrompt by remember { mutableStateOf("") }
+    var aiCode by remember { mutableStateOf("") }
+    var sourceCode by remember { mutableStateOf("") }
+    var smaliPath by remember { mutableStateOf<File?>(null) }
+    var rebuiltApk by remember { mutableStateOf<File?>(null) }
     val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { target ->
         val source = workspaceZip
         if (target != null && source != null) scope.launch {
@@ -71,9 +87,27 @@ private fun ReaDroidPage(onBack: () -> Unit) {
             catch (e: Exception) { status = "Falha ao exportar: " + (e.message ?: "erro") }
         }
     }
+    val apkExportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/vnd.android.package-archive")) { target ->
+        val source = rebuiltApk
+        if (target != null && source != null) scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(target)?.use { out -> source.inputStream().use { it.copyTo(out) } }
+                        ?: error("Não foi possível salvar o APK.")
+                }
+                status = "APK recompilado e assinado exportado."
+            } catch (e: Exception) { status = "Falha ao exportar APK: " + (e.message ?: "erro") }
+        }
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked != null) {
             uri = picked
+            ReaDroidEngine.workspace(context).deleteRecursively()
+            workspaceZip = null
+            smaliPath = null
+            sourceCode = ""
+            aiCode = ""
+            rebuiltApk = null
             name = displayName(context, picked)
             report = null
             status = "Arquivo selecionado. Toque em Analisar APK."
