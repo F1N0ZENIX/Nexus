@@ -395,6 +395,7 @@ private fun sizeLabel(n: Long): String = if (n < 1024L * 1024L) String.format(ja
 
 
 @Composable
+@Composable
 private fun readroidFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Color.White, unfocusedTextColor = Color.White,
     focusedBorderColor = RDRed, unfocusedBorderColor = RDMuted,
