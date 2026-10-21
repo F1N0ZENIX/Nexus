@@ -20,9 +20,10 @@ data class ProviderConfig(
 
 object AIClient {
     private val http = OkHttpClient.Builder()
-        .connectTimeout(25, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .writeTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(90, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(120, TimeUnit.SECONDS)
         .build()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
@@ -79,7 +80,7 @@ object AIClient {
                 val raw = source.string()
                 val obj = JSONObject(raw)
                 val result = obj.optString("result", obj.optString("content", raw))
-                onText(result)
+                withContext(Dispatchers.Main) { onText(result) }
                 return@withContext result
             }
             val reader = source.charStream().buffered()
