@@ -392,3 +392,67 @@ private fun inspect(context: Context, uri: Uri, name: String): ApkReport {
     return ApkReport(name, size, md.digest().joinToString("") { "%02x".format(it) }, files, dex, libs, manifest)
 }
 private fun sizeLabel(n: Long): String = if (n < 1024L * 1024L) String.format(java.util.Locale.US, "%.1f KB", n / 1024.0) else String.format(java.util.Locale.US, "%.2f MB", n / (1024.0 * 1024.0))
+
+
+private fun readroidFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+    focusedBorderColor = RDRed, unfocusedBorderColor = RDMuted,
+    focusedLabelColor = RDRed, unfocusedLabelColor = RDMuted,
+    cursorColor = RDRed
+)
+
+private fun encryptedOpenRouterPrefs(context: Context): android.content.SharedPreferences {
+    val master = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
+    return EncryptedSharedPreferences.create(
+        context, "readroid_secure_prefs", master,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+    )
+}
+private fun readOpenRouterKey(context: Context): String = try {
+    encryptedOpenRouterPrefs(context).getString("openrouter_api_key", "") ?: ""
+} catch (_: Exception) { "" }
+private fun saveOpenRouterKey(context: Context, key: String) {
+    encryptedOpenRouterPrefs(context).edit().putString("openrouter_api_key", key).apply()
+}
+private fun stripCodeFence(text: String): String {
+    var value = text.trim()
+    val fence = 96.toChar().toString().repeat(3)
+    if (value.startsWith(fence)) {
+        value = value.substringAfter('\n', "")
+        if (value.endsWith(fence)) value = value.dropLast(3).trim()
+    }
+    return value.trim()
+}
+private fun requestOpenRouterModification(
+    key: String, model: String, instruction: String, filename: String, source: String
+): String {
+    val prompt = "Modify this Smali file according to the user's request. Return ONLY the complete updated Smali source, no Markdown fences, explanations, or omissions. Preserve the exact .class descriptor and all unrelated behavior. Do not add network exfiltration, credential theft, stealth, or persistence. File: $filename\nRequest: $instruction\n\nCurrent Smali:\n$source"
+    val body = JSONObject()
+        .put("model", model)
+        .put("temperature", 0.2)
+        .put("max_tokens", 12000)
+        .put("messages", JSONArray()
+            .put(JSONObject().put("role", "system").put("content", "You are an Android Smali code editor. Output a complete valid Smali file only."))
+            .put(JSONObject().put("role", "user").put("content", prompt)))
+        .toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+    val request = Request.Builder()
+        .url("https://openrouter.ai/api/v1/chat/completions")
+        .header("Authorization", "Bearer $key")
+        .header("Content-Type", "application/json")
+        .header("X-OpenRouter-Title", "Nexus AI ReaDroid")
+        .post(body)
+        .build()
+    val client = OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(120)).build()
+    client.newCall(request).execute().use { response ->
+        val responseText = response.body?.string().orEmpty()
+        if (!response.isSuccessful) {
+            val detail = try { JSONObject(responseText).optJSONObject("error")?.optString("message") } catch (_: Exception) { null }
+            error("OpenRouter HTTP " + response.code + ": " + (detail ?: response.message))
+        }
+        val content = JSONObject(responseText).optJSONArray("choices")?.optJSONObject(0)
+            ?.optJSONObject("message")?.optString("content").orEmpty()
+        if (content.isBlank() || content == "null") error("O modelo não retornou código.")
+        return content.trim()
+    }
+}
