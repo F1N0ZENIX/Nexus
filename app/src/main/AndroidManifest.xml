@@ -9,6 +9,9 @@
         android:usesCleartextTraffic="true"
         android:supportsRtl="true">
         <activity
+            android:name=".ReaDroidActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
