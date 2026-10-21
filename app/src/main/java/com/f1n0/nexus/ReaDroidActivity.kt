@@ -77,9 +77,9 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var status by remember { mutableStateOf("A análise é feita localmente no celular.") }
     var workspaceZip by remember { mutableStateOf<File?>(null) }
     var apiKey by remember { mutableStateOf(readGroqKey(context)) }
-    var model by remember { mutableStateOf("llama-3.3-70b-versatile") }
+    var model by remember { mutableStateOf("openai/gpt-oss-120b") }
     var modelMenuOpen by remember { mutableStateOf(false) }
-    val freeModels = listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b", "qwen/qwen3-32b")
+    val freeModels = listOf("openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "groq/compound-mini")
     var changePrompt by remember { mutableStateOf("") }
     var aiCode by remember { mutableStateOf("") }
     var sourceCode by remember { mutableStateOf("") }
@@ -223,7 +223,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                                     Text(model, fontSize = 12.sp, color = Color.White)
                                 }
                                 Surface(color = Color(0xFF183C2B), shape = RoundedCornerShape(6.dp)) {
-                                    Text("GRÁTIS", color = Color(0xFF8EE6B1), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+                                    Text("GROQ", color = Color(0xFF8EE6B1), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
                                 }
                             }
                             DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
@@ -231,14 +231,14 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                                     DropdownMenuItem(
                                         text = { Column {
                                             Text(option, fontSize = 12.sp)
-                                            Text("GRÁTIS · disponibilidade pode mudar", fontSize = 10.sp, color = Color(0xFF8EE6B1))
+                                            Text("API Groq · preço/limites variam", fontSize = 10.sp, color = Color(0xFF8EE6B1))
                                         } },
                                         onClick = { model = option; modelMenuOpen = false }
                                     )
                                 }
                             }
                         }
-                        Text("Modelos da Groq. Limites e disponibilidade dependem do plano e podem mudar.", color = RDMuted, fontSize = 10.sp)
+                        Text("Modelos ativos da Groq. Consulte os limites e preços da sua conta; nem todos são gratuitos.", color = RDMuted, fontSize = 10.sp)
                         OutlinedButton(
                             onClick = {
                                 try { saveGroqKey(context, apiKey.trim()); status = "Chave salva criptografada neste dispositivo." }
@@ -330,6 +330,14 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = RDRed, contentColor = RDBg)
                         ) { Text(if (busy) "Recompilando…" else "Recompilar e assinar APK", fontWeight = FontWeight.Bold) }
+                        if (busy) {
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = RDRed,
+                                trackColor = Color(0xFF292929)
+                            )
+                        }
+                        Text(status, color = if (status.startsWith("Falha") || status.startsWith("Erro")) RDRed else RDMuted, fontSize = 11.sp, lineHeight = 15.sp)
                         if (rebuiltApk != null) {
                             OutlinedButton(
                                 onClick = {
