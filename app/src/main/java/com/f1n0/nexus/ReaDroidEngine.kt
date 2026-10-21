@@ -29,8 +29,12 @@ import java.util.zip.ZipOutputStream
 /** Offline APK extraction, DEX/Smali editing, reassembly and local APK signing. */
 internal object ReaDroidEngine {
     fun workspace(context: Context) = File(context.cacheDir, "readroid-workspace")
-    fun firstSmali(context: Context): File? =
-        File(workspace(context), "decompiled-smali").walkTopDown().firstOrNull { it.isFile && it.extension == "smali" }
+    fun firstSmali(context: Context): File? {
+        val candidates = File(workspace(context), "decompiled-smali").walkTopDown()
+            .filter { it.isFile && it.extension == "smali" }.toList()
+        return candidates.firstOrNull { it.name.equals("MainActivity.smali", ignoreCase = true) }
+            ?: candidates.sortedBy { it.relativeTo(workspace(context)).path }.firstOrNull()
+    }
 
     suspend fun buildWorkspace(context: Context, uri: Uri): File = withContext(Dispatchers.IO) {
         val root = workspace(context).apply { deleteRecursively(); mkdirs() }
