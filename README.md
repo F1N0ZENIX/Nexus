@@ -4,7 +4,7 @@ Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaqu
 
 ## Versão atual
 
-**Nexus Ai release 1.0.4**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
+**Nexus Ai release 1.0.5**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
 
 ## Recursos
 
@@ -24,7 +24,7 @@ Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaqu
 
 O build também pode ser acompanhado em [GitHub Actions](https://github.com/F1N0ZENIX/Nexus/actions/workflows/android-apk.yml).
 
-## Modelos locais
+## ReaDroid — análise visual de APKs\n\nA versão 1.0.5 inclui uma tela nativa para inspeção estática básica de APKs: seleção de arquivo, cálculo local de SHA-256, inventário de entradas ZIP, presença do manifesto, arquivos DEX e bibliotecas nativas. O APK analisado não é enviado para servidores. Esta tela é uma integração visual inicial e não substitui as funções avançadas de JADX/Apktool do projeto ReaDroid para Termux.\n\nProjeto original: https://github.com/Mcsd7/ReaDroid\n\n## Modelos locais
 
 O Nexus conecta-se a um servidor compatível com OpenAI, como Ollama ou LM Studio. Os nomes no seletor são presets; o modelo precisa estar instalado e o servidor ligado. Na categoria **Instalados**, o Nexus consulta a API do Ollama para mostrar o tamanho real e oferece a opção de desinstalar o modelo do servidor.
 
