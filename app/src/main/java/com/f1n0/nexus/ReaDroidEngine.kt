@@ -59,7 +59,7 @@ internal object ReaDroidEngine {
             }
         }
         if (dexFiles.isEmpty()) error("Nenhum classes.dex foi encontrado neste APK.")
-        dexFiles.sortBy { dex -> if (dex.name == "classes.dex") 1 else Regex("^classes([0-9]+)\\\\.dex$").matchEntire(dex.name)?.groupValues?.get(1)?.toIntOrNull() ?: Int.MAX_VALUE }
+        dexFiles.sortBy { dex -> if (dex.name == "classes.dex") 1 else Regex("""^classes([0-9]+)\.dex$""").matchEntire(dex.name)?.groupValues?.get(1)?.toIntOrNull() ?: Int.MAX_VALUE }
         val smaliRoot = File(root, "decompiled-smali").apply { mkdirs() }
         dexFiles.forEachIndexed { index, dex ->
             val output = File(smaliRoot, "dex${index + 1}").apply { mkdirs() }
