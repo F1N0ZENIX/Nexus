@@ -13,8 +13,8 @@ android {
         applicationId = "com.f1n0.nexus"
         minSdk = 26
         targetSdk = 35
-        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 4
-        versionName = "1.0.4"
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 5
+        versionName = "1.0.5"
     }
 
     buildFeatures { compose = true }
