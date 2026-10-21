@@ -394,6 +394,7 @@ private fun inspect(context: Context, uri: Uri, name: String): ApkReport {
 private fun sizeLabel(n: Long): String = if (n < 1024L * 1024L) String.format(java.util.Locale.US, "%.1f KB", n / 1024.0) else String.format(java.util.Locale.US, "%.2f MB", n / (1024.0 * 1024.0))
 
 
+@Composable
 private fun readroidFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Color.White, unfocusedTextColor = Color.White,
     focusedBorderColor = RDRed, unfocusedBorderColor = RDMuted,
