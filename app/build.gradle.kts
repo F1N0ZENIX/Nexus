@@ -13,8 +13,8 @@ android {
         applicationId = "com.f1n0.nexus"
         minSdk = 26
         targetSdk = 35
-        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 6
-        versionName = "1.0.6"
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 7
+        versionName = "1.0.7"
     }
 
     buildFeatures { compose = true }
@@ -44,5 +44,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     // Local DEX disassembly to Smali; all processing stays on-device.
     implementation("org.smali:baksmali:2.5.2")
+    implementation("org.smali:smali:2.5.2")
+    implementation("com.android.tools.build:apksig:8.7.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
