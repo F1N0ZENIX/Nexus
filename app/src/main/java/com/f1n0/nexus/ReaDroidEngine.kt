@@ -36,11 +36,13 @@ internal object ReaDroidEngine {
             ?: candidates.sortedBy { it.relativeTo(workspace(context)).path }.firstOrNull()
     }
 
-    suspend fun buildWorkspace(context: Context, uri: Uri): File = withContext(Dispatchers.IO) {
+    suspend fun buildWorkspace(context: Context, uri: Uri, onProgress: (String) -> Unit = {}): File = withContext(Dispatchers.IO) {
+        onProgress("Preparando workspace e copiando APK…")
         val root = workspace(context).apply { deleteRecursively(); mkdirs() }
         val source = File(root, "original.apk")
         context.contentResolver.openInputStream(uri)?.use { input -> source.outputStream().use { input.copyTo(it) } }
             ?: error("Não foi possível ler o APK.")
+        onProgress("Extraindo arquivos do APK…")
         val extracted = File(root, "files").apply { mkdirs() }
         val dexFiles = mutableListOf<File>()
         ZipInputStream(FileInputStream(source)).use { zip ->
@@ -62,12 +64,14 @@ internal object ReaDroidEngine {
         dexFiles.sortBy { dex -> if (dex.name == "classes.dex") 1 else Regex("""^classes([0-9]+)\.dex$""").matchEntire(dex.name)?.groupValues?.get(1)?.toIntOrNull() ?: Int.MAX_VALUE }
         val smaliRoot = File(root, "decompiled-smali").apply { mkdirs() }
         dexFiles.forEachIndexed { index, dex ->
+            onProgress("Descompilando DEX ${index + 1}/${dexFiles.size}: ${dex.name}…")
             val output = File(smaliRoot, "dex${index + 1}").apply { mkdirs() }
             val dexFile = DexFileFactory.loadDexFile(dex.absolutePath, Opcodes.getDefault())
             val options = BaksmaliOptions().apply { apiLevel = 35 }
             val ok = Baksmali.disassembleDexFile(dexFile, output, Runtime.getRuntime().availableProcessors().coerceIn(1, 4), options)
             if (!ok) error("Não foi possível descompilar ${dex.name}.")
         }
+        onProgress("Gerando instruções e arquivo ZIP…")
         File(root, "LEIA-ME.txt").writeText(
             "Nexus AI / ReaDroid - workspace offline\n\n" +
             "files/: arquivos extraídos do APK original.\n" +
@@ -79,7 +83,8 @@ internal object ReaDroidEngine {
         File(root, "ReaDroid-workspace.zip")
     }
 
-    suspend fun rebuildAndSign(context: Context): File = withContext(Dispatchers.IO) {
+    suspend fun rebuildAndSign(context: Context, onProgress: (String) -> Unit = {}): File = withContext(Dispatchers.IO) {
+        onProgress("Validando workspace…")
         val root = workspace(context)
         val original = File(root, "original.apk")
         val extracted = File(root, "files")
@@ -90,6 +95,7 @@ internal object ReaDroidEngine {
         val compiled = File(root, "compiled-dex").apply { deleteRecursively(); mkdirs() }
         val dexNames = mutableListOf<String>()
         dexDirs.forEachIndexed { index, dir ->
+            onProgress("Recompilando Smali ${index + 1}/${dexDirs.size}: ${dir.name}…")
             val dexName = if (index == 0) "classes.dex" else "classes${index + 1}.dex"
             val output = File(compiled, dexName)
             val options = SmaliOptions().apply {
@@ -103,6 +109,7 @@ internal object ReaDroidEngine {
             }
             dexNames.add(dexName)
         }
+        onProgress("Empacotando recursos e DEX…")
         val unsigned = File(root, "rebuilt-unsigned.apk")
         ZipOutputStream(FileOutputStream(unsigned)).use { zip ->
             extracted.walkTopDown().filter { it.isFile }.forEach { file ->
@@ -119,6 +126,7 @@ internal object ReaDroidEngine {
                 zip.closeEntry()
             }
         }
+        onProgress("Assinando APK…")
         val signed = File(root, "ReaDroid-rebuilt-signed.apk")
         val config = signerConfig()
         ApkSigner.Builder(listOf(config))
@@ -130,6 +138,7 @@ internal object ReaDroidEngine {
             .setV3SigningEnabled(true)
             .build().sign()
         require(signed.exists() && signed.length() > 0) { "O APK assinado não foi criado." }
+        onProgress("Concluído: APK assinado (${signed.length() / 1024} KB).")
         signed
     }
 
