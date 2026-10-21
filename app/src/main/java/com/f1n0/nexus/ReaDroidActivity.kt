@@ -202,6 +202,117 @@ private fun ReaDroidPage(onBack: () -> Unit) {
             }
             item {
                 Surface(color = RDPanel, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("OPENROUTER / MODIFICAR APP", color = RDRed, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Informe sua chave OpenRouter. Ela fica criptografada no armazenamento privado do app. O arquivo Smali selecionado será enviado ao modelo; não envie apps com dados privados.", color = RDMuted, fontSize = 11.sp, lineHeight = 15.sp)
+                        OutlinedTextField(
+                            value = apiKey, onValueChange = { apiKey = it }, modifier = Modifier.fillMaxWidth(),
+                            label = { Text("OpenRouter API key") }, singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            colors = readroidFieldColors()
+                        )
+                        OutlinedTextField(
+                            value = model, onValueChange = { model = it }, modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Modelo OpenRouter") }, singleLine = true,
+                            colors = readroidFieldColors()
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                try { saveOpenRouterKey(context, apiKey.trim()); status = "Chave salva criptografada neste dispositivo." }
+                                catch (e: Exception) { status = "Não foi possível proteger a chave: " + (e.message ?: "erro") }
+                            }, modifier = Modifier.fillMaxWidth()
+                        ) { Text("Salvar chave neste dispositivo") }
+                        OutlinedTextField(
+                            value = changePrompt, onValueChange = { changePrompt = it },
+                            modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 6,
+                            label = { Text("O que você quer modificar?") },
+                            placeholder = { Text("Ex.: altere o texto do botão principal para Continuar e preserve o restante.") },
+                            colors = readroidFieldColors()
+                        )
+                        Button(
+                            enabled = uri != null && !busy && apiKey.isNotBlank() && model.isNotBlank() && changePrompt.isNotBlank(),
+                            onClick = {
+                                val selected = uri ?: return@Button
+                                busy = true
+                                status = "Preparando código Smali para a IA…"
+                                scope.launch {
+                                    try {
+                                        val ready = withContext(Dispatchers.IO) {
+                                            File(ReaDroidEngine.workspace(context), "original.apk").exists() &&
+                                                ReaDroidEngine.firstSmali(context) != null
+                                        }
+                                        if (!ready) ReaDroidEngine.buildWorkspace(context, selected)
+                                        val targetFile = withContext(Dispatchers.IO) { ReaDroidEngine.firstSmali(context) }
+                                            ?: error("Nenhum arquivo Smali disponível.")
+                                        val originalCode = withContext(Dispatchers.IO) { targetFile.readText() }
+                                        if (originalCode.length > 18000) error("O arquivo é grande demais para esta edição automática.")
+                                        saveOpenRouterKey(context, apiKey.trim())
+                                        val generated = withContext(Dispatchers.IO) {
+                                            requestOpenRouterModification(apiKey.trim(), model.trim(), changePrompt.trim(), targetFile.name, originalCode)
+                                        }
+                                        smaliPath = targetFile
+                                        sourceCode = originalCode
+                                        aiCode = generated
+                                        status = "A IA gerou uma proposta. Revise o código antes de aplicar."
+                                    } catch (e: Exception) {
+                                        status = "Erro OpenRouter/Smali: " + (e.message ?: "falha desconhecida")
+                                    } finally { busy = false }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = RDRed, contentColor = RDBg)
+                        ) { Text(if (busy) "Processando…" else "Gerar modificação com IA", fontWeight = FontWeight.Bold) }
+                        if (aiCode.isNotBlank()) {
+                            Text("PROPOSTA GERADA — revise antes de aplicar", color = RDRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            OutlinedTextField(
+                                value = aiCode, onValueChange = { aiCode = it }, modifier = Modifier.fillMaxWidth(),
+                                minLines = 5, maxLines = 16, label = { Text("Smali modificado") },
+                                colors = readroidFieldColors()
+                            )
+                            Button(
+                                enabled = !busy && smaliPath != null,
+                                onClick = {
+                                    try {
+                                        val file = smaliPath ?: error("Arquivo Smali não selecionado.")
+                                        val cleaned = stripCodeFence(aiCode)
+                                        val oldClass = Regex("(?m)^\\s*\\.class\\s+.*?\\s+(L[^;]+;)").find(sourceCode)?.groupValues?.getOrNull(1)
+                                        val newClass = Regex("(?m)^\\s*\\.class\\s+.*?\\s+(L[^;]+;)").find(cleaned)?.groupValues?.getOrNull(1)
+                                        require(cleaned.contains(".class ") && oldClass != null && oldClass == newClass) {
+                                            "A resposta não preservou a classe original. Não apliquei a alteração."
+                                        }
+                                        file.writeText(cleaned)
+                                        sourceCode = cleaned
+                                        status = "Smali aplicado ao workspace. Agora você pode recompilar e assinar."
+                                    } catch (e: Exception) { status = "Não foi possível aplicar: " + (e.message ?: "resposta inválida") }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = RDRed, contentColor = RDBg)
+                            ) { Text("Aplicar código ao workspace") }
+                        }
+                        Button(
+                            enabled = !busy && File(ReaDroidEngine.workspace(context), "original.apk").exists(),
+                            onClick = {
+                                busy = true
+                                status = "Montando DEX e assinando APK…"
+                                scope.launch {
+                                    try {
+                                        rebuiltApk = ReaDroidEngine.rebuildAndSign(context)
+                                        status = "APK recompilado e assinado. Escolha onde salvar."
+                                        apkExportPicker.launch("ReaDroid-rebuilt.apk")
+                                    } catch (e: Exception) {
+                                        status = "Falha ao recompilar: " + (e.message ?: "erro")
+                                    } finally { busy = false }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = RDRed, contentColor = RDBg)
+                        ) { Text(if (busy) "Recompilando…" else "Recompilar e assinar APK", fontWeight = FontWeight.Bold) }
+                        Text("A montagem substitui os DEX e preserva os demais recursos. O APK recebe nova assinatura local; se a assinatura for diferente, ele não atualiza a instalação original por cima.", color = RDMuted, fontSize = 10.sp, lineHeight = 14.sp)
+                    }
+                }
+            }
+            item {
+                Surface(color = RDPanel, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                         Text("DESCOMPILAR DEX / EXPORTAR", color = RDRed, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         Text("Extrai os arquivos e converte classes DEX para Smali no próprio celular, sem enviar o APK à internet.", color = RDMuted, fontSize = 12.sp)
@@ -228,7 +339,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                 }
             }
             item {
-                Text("Esta primeira integração cobre inspeção estática básica. JADX, edição de manifesto, Apktool e assinatura ainda não estão incorporados nesta tela.", color = RDMuted, fontSize = 10.sp, lineHeight = 15.sp)
+                Text("O editor altera um arquivo Smali por vez com apoio do OpenRouter; a recompilação local remonta os DEX, preserva os recursos existentes e assina o APK com uma chave local.", color = RDMuted, fontSize = 10.sp, lineHeight = 15.sp)
                 Spacer(Modifier.height(20.dp))
             }
         }
