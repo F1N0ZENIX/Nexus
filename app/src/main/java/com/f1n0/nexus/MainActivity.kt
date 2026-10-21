@@ -1,6 +1,7 @@
 package com.f1n0.nexus
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -111,6 +112,9 @@ class MainActivity : ComponentActivity() {
                             Column(Modifier.weight(1f)) {
                                 Text("NEXUS", fontWeight = FontWeight.Black, letterSpacing = 3.sp, fontSize = 17.sp)
                                 Text("AI WORKSPACE", color = Muted, fontSize = 10.sp, letterSpacing = 2.sp)
+                            }
+                            TextButton(onClick = { startActivity(Intent(this@MainActivity, ReaDroidActivity::class.java)) }) {
+                                Text("READROID", color = AccentRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                             IconButton(onClick = { historyOpen = true }) {
                                 Icon(Icons.Default.History, "Histórico de conversas", tint = Ink)
