@@ -30,7 +30,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File\nimport java.security.MessageDigest
+import java.io.File
+import java.security.MessageDigest
 import java.util.zip.ZipInputStream
 
 private val RDBg = Color(0xFF000000)
@@ -61,7 +62,15 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var name by remember { mutableStateOf("Nenhum APK selecionado") }
     var report by remember { mutableStateOf<ApkReport?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("A análise é feita localmente no celular.") }\n    var workspaceZip by remember { mutableStateOf<File?>(null) }\n    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { target ->\n        val source = workspaceZip\n        if (target != null && source != null) scope.launch {\n            try { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(target)?.use { out -> source.inputStream().use { it.copyTo(out) } } ?: error("Não foi possível salvar o arquivo.") }; status = "Workspace exportado com sucesso." }\n            catch (e: Exception) { status = "Falha ao exportar: " + (e.message ?: "erro") }\n        }\n    }
+    var status by remember { mutableStateOf("A análise é feita localmente no celular.") }
+    var workspaceZip by remember { mutableStateOf<File?>(null) }
+    val exportPicker = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { target ->
+        val source = workspaceZip
+        if (target != null && source != null) scope.launch {
+            try { withContext(Dispatchers.IO) { context.contentResolver.openOutputStream(target)?.use { out -> source.inputStream().use { it.copyTo(out) } } ?: error("Não foi possível salvar o arquivo.") }; status = "Workspace exportado com sucesso." }
+            catch (e: Exception) { status = "Falha ao exportar: " + (e.message ?: "erro") }
+        }
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked != null) {
             uri = picked
