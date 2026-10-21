@@ -14,7 +14,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 7
-        versionName = "1.0.8"
+        versionName = "1.0.9"
     }
 
     buildFeatures { compose = true }
