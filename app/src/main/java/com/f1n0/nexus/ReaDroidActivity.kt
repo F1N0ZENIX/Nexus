@@ -76,10 +76,10 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("A análise é feita localmente no celular.") }
     var workspaceZip by remember { mutableStateOf<File?>(null) }
-    var apiKey by remember { mutableStateOf(readOpenRouterKey(context)) }
-    var model by remember { mutableStateOf("qwen/qwen3-4b:free") }
+    var apiKey by remember { mutableStateOf(readGroqKey(context)) }
+    var model by remember { mutableStateOf("llama-3.3-70b-versatile") }
     var modelMenuOpen by remember { mutableStateOf(false) }
-    val freeModels = listOf("qwen/qwen3-4b:free", "google/gemma-3-4b-it:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1-0528:free", "mistralai/mistral-small-3.1-24b-instruct:free")
+    val freeModels = listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b", "qwen/qwen3-32b")
     var changePrompt by remember { mutableStateOf("") }
     var aiCode by remember { mutableStateOf("") }
     var sourceCode by remember { mutableStateOf("") }
@@ -208,11 +208,11 @@ private fun ReaDroidPage(onBack: () -> Unit) {
             item {
                 Surface(color = RDPanel, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("OPENROUTER / MODIFICAR APP", color = RDRed, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        Text("Informe sua chave OpenRouter. Ela fica criptografada no armazenamento privado do app. O arquivo Smali selecionado será enviado ao modelo; não envie apps com dados privados.", color = RDMuted, fontSize = 11.sp, lineHeight = 15.sp)
+                        Text("GROQ / MODIFICAR APP", color = RDRed, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Text("Informe sua chave Groq. Ela fica criptografada no armazenamento privado do app. O arquivo Smali selecionado será enviado ao modelo; não envie apps com dados privados.", color = RDMuted, fontSize = 11.sp, lineHeight = 15.sp)
                         OutlinedTextField(
                             value = apiKey, onValueChange = { apiKey = it }, modifier = Modifier.fillMaxWidth(),
-                            label = { Text("OpenRouter API key") }, singleLine = true,
+                            label = { Text("Chave API da Groq") }, singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             colors = readroidFieldColors()
                         )
@@ -238,10 +238,10 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                                 }
                             }
                         }
-                        Text("Os modelos com a tag GRÁTIS são opções gratuitas listadas no OpenRouter; disponibilidade e limites dependem do provedor.", color = RDMuted, fontSize = 10.sp)
+                        Text("Modelos da Groq. Limites e disponibilidade dependem do plano e podem mudar.", color = RDMuted, fontSize = 10.sp)
                         OutlinedButton(
                             onClick = {
-                                try { saveOpenRouterKey(context, apiKey.trim()); status = "Chave salva criptografada neste dispositivo." }
+                                try { saveGroqKey(context, apiKey.trim()); status = "Chave salva criptografada neste dispositivo." }
                                 catch (e: Exception) { status = "Não foi possível proteger a chave: " + (e.message ?: "erro") }
                             }, modifier = Modifier.fillMaxWidth()
                         ) { Text("Salvar chave neste dispositivo") }
@@ -264,21 +264,21 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                                             File(ReaDroidEngine.workspace(context), "original.apk").exists() &&
                                                 ReaDroidEngine.firstSmali(context) != null
                                         }
-                                        if (!ready) ReaDroidEngine.buildWorkspace(context, selected)
+                                        if (!ready) ReaDroidEngine.buildWorkspace(context, selected) { message -> scope.launch(Dispatchers.Main) { status = message } }
                                         val targetFile = withContext(Dispatchers.IO) { ReaDroidEngine.firstSmali(context) }
                                             ?: error("Nenhum arquivo Smali disponível.")
                                         val originalCode = withContext(Dispatchers.IO) { targetFile.readText() }
                                         if (originalCode.length > 18000) error("O arquivo é grande demais para esta edição automática.")
-                                        saveOpenRouterKey(context, apiKey.trim())
+                                        saveGroqKey(context, apiKey.trim())
                                         val generated = withContext(Dispatchers.IO) {
-                                            requestOpenRouterModification(apiKey.trim(), model.trim(), changePrompt.trim(), targetFile.name, originalCode)
+                                            requestGroqModification(apiKey.trim(), model.trim(), changePrompt.trim(), targetFile.name, originalCode)
                                         }
                                         smaliPath = targetFile
                                         sourceCode = originalCode
                                         aiCode = generated
                                         status = "A IA gerou uma proposta. Revise o código antes de aplicar."
                                     } catch (e: Exception) {
-                                        status = "Erro OpenRouter/Smali: " + (e.message ?: "falha desconhecida")
+                                        status = "Erro Groq/Smali: " + (e.message ?: "falha desconhecida")
                                     } finally { busy = false }
                                 }
                             },
@@ -319,7 +319,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                                 status = "Montando DEX e assinando APK…"
                                 scope.launch {
                                     try {
-                                        rebuiltApk = ReaDroidEngine.rebuildAndSign(context)
+                                        rebuiltApk = ReaDroidEngine.rebuildAndSign(context) { message -> scope.launch(Dispatchers.Main) { status = message } }
                                         status = "APK recompilado e assinado. Escolha onde salvar."
                                         apkExportPicker.launch("ReaDroid-rebuilt.apk")
                                     } catch (e: Exception) {
@@ -356,7 +356,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                                 status = "Extraindo e descompilando DEX para Smali…"
                                 scope.launch {
                                     try {
-                                        workspaceZip = ReaDroidEngine.buildWorkspace(context, selected)
+                                        workspaceZip = ReaDroidEngine.buildWorkspace(context, selected) { message -> scope.launch(Dispatchers.Main) { status = message } }
                                         status = "Workspace pronto. Escolha onde salvar o ZIP."
                                         exportPicker.launch("ReaDroid-workspace.zip")
                                     } catch (e: Exception) {
@@ -371,7 +371,7 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                 }
             }
             item {
-                Text("O editor altera um arquivo Smali por vez com apoio do OpenRouter; a recompilação local remonta os DEX, preserva os recursos existentes e assina o APK com uma chave local.", color = RDMuted, fontSize = 10.sp, lineHeight = 15.sp)
+                Text("O editor altera um arquivo Smali por vez com apoio do Groq; a recompilação local remonta os DEX, preserva os recursos existentes e assina o APK com uma chave local.", color = RDMuted, fontSize = 10.sp, lineHeight = 15.sp)
                 Spacer(Modifier.height(20.dp))
             }
         }
@@ -434,7 +434,7 @@ private fun readroidFieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = RDRed
 )
 
-private fun encryptedOpenRouterPrefs(context: Context): android.content.SharedPreferences {
+private fun encryptedGroqPrefs(context: Context): android.content.SharedPreferences {
     val master = MasterKey.Builder(context).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
     return EncryptedSharedPreferences.create(
         context, "readroid_secure_prefs", master,
@@ -442,11 +442,11 @@ private fun encryptedOpenRouterPrefs(context: Context): android.content.SharedPr
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
 }
-private fun readOpenRouterKey(context: Context): String = try {
-    encryptedOpenRouterPrefs(context).getString("openrouter_api_key", "") ?: ""
+private fun readGroqKey(context: Context): String = try {
+    encryptedGroqPrefs(context).getString("groq_api_key", "") ?: ""
 } catch (_: Exception) { "" }
-private fun saveOpenRouterKey(context: Context, key: String) {
-    encryptedOpenRouterPrefs(context).edit().putString("openrouter_api_key", key).apply()
+private fun saveGroqKey(context: Context, key: String) {
+    encryptedGroqPrefs(context).edit().putString("groq_api_key", key).apply()
 }
 private fun stripCodeFence(text: String): String {
     var value = text.trim()
@@ -457,7 +457,7 @@ private fun stripCodeFence(text: String): String {
     }
     return value.trim()
 }
-private fun requestOpenRouterModification(
+private fun requestGroqModification(
     key: String, model: String, instruction: String, filename: String, source: String
 ): String {
     val prompt = "Modify this Smali file according to the user's request. Return ONLY the complete updated Smali source, no Markdown fences, explanations, or omissions. Preserve the exact .class descriptor and all unrelated behavior. Do not add network exfiltration, credential theft, stealth, or persistence. File: $filename\nRequest: $instruction\n\nCurrent Smali:\n$source"
@@ -470,10 +470,10 @@ private fun requestOpenRouterModification(
             .put(JSONObject().put("role", "user").put("content", prompt)))
         .toString().toRequestBody("application/json; charset=utf-8".toMediaType())
     val request = Request.Builder()
-        .url("https://openrouter.ai/api/v1/chat/completions")
+        .url("https://api.groq.com/openai/v1/chat/completions")
         .header("Authorization", "Bearer $key")
         .header("Content-Type", "application/json")
-        .header("X-OpenRouter-Title", "Nexus AI ReaDroid")
+        .header("X-Groq-Title", "Nexus AI ReaDroid")
         .post(body)
         .build()
     val client = OkHttpClient.Builder().connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS).readTimeout(90, java.util.concurrent.TimeUnit.SECONDS).writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS).callTimeout(120, java.util.concurrent.TimeUnit.SECONDS).build()
@@ -481,7 +481,7 @@ private fun requestOpenRouterModification(
         val responseText = response.body?.string().orEmpty()
         if (!response.isSuccessful) {
             val detail = try { JSONObject(responseText).optJSONObject("error")?.optString("message") } catch (_: Exception) { null }
-            error("OpenRouter HTTP " + response.code + ": " + (detail ?: response.message))
+            error("Groq HTTP " + response.code + ": " + (detail ?: response.message))
         }
         val content = JSONObject(responseText).optJSONArray("choices")?.optJSONObject(0)
             ?.optJSONObject("message")?.optString("content").orEmpty()
