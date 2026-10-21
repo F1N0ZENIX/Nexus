@@ -53,14 +53,16 @@ jobs:
         shell: bash
         run: |
           APK=app/build/outputs/apk/debug/app-debug.apk
+          VERSION="${{ steps.version.outputs.version }}"
+          APK_NAME="Nexus AI release ${VERSION}.apk"
           if [ -n "$NEXUS_KEYSTORE_BASE64" ] && [ -n "$NEXUS_KEYSTORE_PASSWORD" ] && [ -n "$NEXUS_KEY_ALIAS" ] && [ -n "$NEXUS_KEY_PASSWORD" ]; then
             echo "$NEXUS_KEYSTORE_BASE64" | base64 --decode > nexus-release.jks
             APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
-            "$APKSIGNER" sign --ks nexus-release.jks --ks-key-alias "$NEXUS_KEY_ALIAS" --ks-pass env:NEXUS_KEYSTORE_PASSWORD --key-pass env:NEXUS_KEY_PASSWORD --out Nexus-release.apk "$APK"
-            "$APKSIGNER" verify Nexus-release.apk
+            "$APKSIGNER" sign --ks nexus-release.jks --ks-key-alias "$NEXUS_KEY_ALIAS" --ks-pass env:NEXUS_KEYSTORE_PASSWORD --key-pass env:NEXUS_KEY_PASSWORD --out "$APK_NAME" "$APK"
+            "$APKSIGNER" verify "$APK_NAME"
             echo "Persistent release signature applied."
           else
-            cp "$APK" Nexus-release.apk
+            cp "$APK" "$APK_NAME"
             echo "::warning::Release secrets are not configured; this debug-signed APK may not install over a previous build."
           fi
       - name: Upload APK artifact
