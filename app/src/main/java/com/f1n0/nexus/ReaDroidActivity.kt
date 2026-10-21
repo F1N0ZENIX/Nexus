@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.widget.Toast
@@ -475,7 +476,7 @@ private fun requestOpenRouterModification(
         .header("X-OpenRouter-Title", "Nexus AI ReaDroid")
         .post(body)
         .build()
-    val client = OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(120)).build()
+    val client = OkHttpClient.Builder().connectTimeout(20, java.util.concurrent.TimeUnit.SECONDS).readTimeout(90, java.util.concurrent.TimeUnit.SECONDS).writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS).callTimeout(120, java.util.concurrent.TimeUnit.SECONDS).build()
     client.newCall(request).execute().use { response ->
         val responseText = response.body?.string().orEmpty()
         if (!response.isSuccessful) {
@@ -492,6 +493,13 @@ private fun requestOpenRouterModification(
 
 private fun launchReaDroidInstaller(context: Context, apk: File) {
     require(apk.exists() && apk.isFile && apk.length() > 0L) { "O APK recompilado não existe ou está vazio." }
+    if (android.os.Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
+        val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(settingsIntent)
+        return
+    }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
     val intent = Intent(Intent.ACTION_VIEW).apply {
         setDataAndType(uri, "application/vnd.android.package-archive")
