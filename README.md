@@ -4,7 +4,7 @@ Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaqu
 
 ## Versão atual
 
-**Nexus Ai release 1.0.6**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
+**Nexus Ai release 1.0.7**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
 
 ## Recursos
 
@@ -83,4 +83,12 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`.
 - Modelos precisam estar instalados no runtime local; não vêm embutidos no APK.
 - `10.0.2.2` é para emuladores, não para o Nothing Phone 1.
 - O APK precisa ser compilado e testado em dispositivo real antes de considerar a versão estável.
-\n\n### ReaDroid 1.0.6\n- Análise estática de APK offline.\n- Exportação de workspace ZIP com arquivos extraídos e DEX descompilado para Smali.\n- Não recompila nem assina APKs modificados; não recupera o fonte original Java/Kotlin.\n
+\n\n### ReaDroid 1.0.7\n- Análise estática de APK offline.\n- Exportação de workspace ZIP com arquivos extraídos e DEX descompilado para Smali.\n- Não recompila nem assina APKs modificados; não recupera o fonte original Java/Kotlin.\n
+
+### ReaDroid 1.0.7 — edição assistida e recompilação local
+- Integração opcional com OpenRouter Chat Completions; o usuário informa a própria chave.
+- Chave salva em preferências criptografadas no dispositivo.
+- A IA recebe somente o arquivo Smali selecionado e a instrução digitada; a chamada externa pode transmitir esse código ao provedor/modelo escolhido.
+- Aplicação revisável do Smali gerado, com validação do descritor da classe.
+- Montagem dos diretórios Smali em DEX, substituição dos DEX no APK e assinatura local para exportação.
+- Limites: esta etapa modifica um arquivo Smali por solicitação e preserva os recursos compilados do APK original. Não é um clone universal de Apktool/JADX; alterações de recursos, manifesto binário, bibliotecas nativas ou vários arquivos relacionados podem exigir trabalho adicional. O APK recebe assinatura nova, não compatível com a assinatura original.
