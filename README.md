@@ -4,7 +4,7 @@ Aplicativo Android nativo com interface minimalista, preto AMOLED puro e destaqu
 
 ## Versão atual
 
-**Nexus Ai release 1.0.5**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
+**Nexus Ai release 1.0.6**. O GitHub Actions usa automaticamente o título `Nexus Ai release ZZ.ZZ.ZZ`, preenchendo `ZZ.ZZ.ZZ` com o `versionName` do aplicativo.
 
 ## Recursos
 
@@ -83,3 +83,4 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`.
 - Modelos precisam estar instalados no runtime local; não vêm embutidos no APK.
 - `10.0.2.2` é para emuladores, não para o Nothing Phone 1.
 - O APK precisa ser compilado e testado em dispositivo real antes de considerar a versão estável.
+\n\n### ReaDroid 1.0.6\n- Análise estática de APK offline.\n- Exportação de workspace ZIP com arquivos extraídos e DEX descompilado para Smali.\n- Não recompila nem assina APKs modificados; não recupera o fonte original Java/Kotlin.\n
