@@ -85,6 +85,15 @@ jobs:
             - Histórico local; sem API Kimi integrada
             - Alternativa local Qwen3 4B e gerenciamento de modelos Ollama
             Para atualizações por cima, configure uma chave de assinatura persistente nos Secrets do repositório.
-          files: "${{ steps.version.outputs.apk_name }}"
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
           make_latest: true
+      - name: Upload APK with exact filename
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          APK_NAME="Nexus AI release ${VERSION}.apk"
+          gh release delete-asset "$TAG" "Nexus.AI.release.${VERSION}.apk" --yes 2>/dev/null || true
+          gh release upload "$TAG" "$APK_NAME" --clobber
