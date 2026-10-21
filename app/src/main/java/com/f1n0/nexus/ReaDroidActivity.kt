@@ -1,6 +1,7 @@
 package com.f1n0.nexus
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -11,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -74,7 +76,9 @@ private fun ReaDroidPage(onBack: () -> Unit) {
     var status by remember { mutableStateOf("A análise é feita localmente no celular.") }
     var workspaceZip by remember { mutableStateOf<File?>(null) }
     var apiKey by remember { mutableStateOf(readOpenRouterKey(context)) }
-    var model by remember { mutableStateOf("openai/gpt-4o-mini") }
+    var model by remember { mutableStateOf("qwen/qwen3-4b:free") }
+    var modelMenuOpen by remember { mutableStateOf(false) }
+    val freeModels = listOf("qwen/qwen3-4b:free", "google/gemma-3-4b-it:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1-0528:free", "mistralai/mistral-small-3.1-24b-instruct:free")
     var changePrompt by remember { mutableStateOf("") }
     var aiCode by remember { mutableStateOf("") }
     var sourceCode by remember { mutableStateOf("") }
@@ -211,11 +215,29 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                             visualTransformation = PasswordVisualTransformation(),
                             colors = readroidFieldColors()
                         )
-                        OutlinedTextField(
-                            value = model, onValueChange = { model = it }, modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Modelo OpenRouter") }, singleLine = true,
-                            colors = readroidFieldColors()
-                        )
+                        Box(Modifier.fillMaxWidth()) {
+                            OutlinedButton(onClick = { modelMenuOpen = true }, modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                                    Text("IA selecionada", fontSize = 10.sp, color = RDMuted)
+                                    Text(model, fontSize = 12.sp, color = Color.White)
+                                }
+                                Surface(color = Color(0xFF183C2B), shape = RoundedCornerShape(6.dp)) {
+                                    Text("GRÁTIS", color = Color(0xFF8EE6B1), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp))
+                                }
+                            }
+                            DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
+                                freeModels.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Column {
+                                            Text(option, fontSize = 12.sp)
+                                            Text("GRÁTIS · disponibilidade pode mudar", fontSize = 10.sp, color = Color(0xFF8EE6B1))
+                                        } },
+                                        onClick = { model = option; modelMenuOpen = false }
+                                    )
+                                }
+                            }
+                        }
+                        Text("Os modelos com a tag GRÁTIS são opções gratuitas listadas no OpenRouter; disponibilidade e limites dependem do provedor.", color = RDMuted, fontSize = 10.sp)
                         OutlinedButton(
                             onClick = {
                                 try { saveOpenRouterKey(context, apiKey.trim()); status = "Chave salva criptografada neste dispositivo." }
@@ -307,7 +329,16 @@ private fun ReaDroidPage(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = RDRed, contentColor = RDBg)
                         ) { Text(if (busy) "Recompilando…" else "Recompilar e assinar APK", fontWeight = FontWeight.Bold) }
-                        Text("A montagem substitui os DEX e preserva os demais recursos. O APK recebe nova assinatura local; se a assinatura for diferente, ele não atualiza a instalação original por cima.", color = RDMuted, fontSize = 10.sp, lineHeight = 14.sp)
+                        if (rebuiltApk != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    try { launchReaDroidInstaller(context, rebuiltApk!!); status = "Abrindo instalador do Android…" }
+                                    catch (e: Exception) { status = "Não foi possível abrir o instalador: " + (e.message ?: "erro") }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Instalar APK recompilado") }
+                        }
+                        Text("A montagem recompila os DEX e preserva recursos já compilados. Alterações em manifesto/recursos XML exigem Apktool completo. O Android só permite atualizar um app se a assinatura corresponder à instalação existente.", color = RDMuted, fontSize = 10.sp, lineHeight = 14.sp)
                     }
                 }
             }
@@ -456,4 +487,15 @@ private fun requestOpenRouterModification(
         if (content.isBlank() || content == "null") error("O modelo não retornou código.")
         return content.trim()
     }
+}
+
+
+private fun launchReaDroidInstaller(context: Context, apk: File) {
+    require(apk.exists() && apk.isFile && apk.length() > 0L) { "O APK recompilado não existe ou está vazio." }
+    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk)
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, "application/vnd.android.package-archive")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    context.startActivity(intent)
 }
