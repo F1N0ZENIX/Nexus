@@ -24,11 +24,19 @@ jobs:
       - name: Check out Nexus branch
         uses: actions/checkout@v4
 
+      - name: Set up Android command-line tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+
       - name: Install pinned Android NDK
         shell: bash
         run: |
           set -Eeuo pipefail
-          sdkmanager --sdk_root="$ANDROID_HOME" --install "ndk;${NDK_VERSION}"
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${SDKMANAGER}"
+          yes | "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" --licenses >/dev/null
+          "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" --install "ndk;${NDK_VERSION}"
           NDK="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           test -x "${NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API}-clang"
           echo "ANDROID_NDK_HOME=${NDK}" >> "$GITHUB_ENV"
@@ -58,13 +66,13 @@ jobs:
         run: |
           set -Eeuo pipefail
           cd "$RUNNER_TEMP/opencode/packages/process-daemon"
-          python3 - <<'PY'
+          python3 - <<PY
           from pathlib import Path
           path = Path("build.rs")
           source = path.read_text()
-          anchor = '            "aarch64-unknown-linux-musl" => "aarch64-linux-musl",\n'
-          addition = anchor + '            "aarch64-linux-android" => "aarch64-linux-android",\n'
-          if '"aarch64-linux-android" => "aarch64-linux-android"' not in source:
+          anchor = "            \"aarch64-unknown-linux-musl\" => \"aarch64-linux-musl\",\n"
+          addition = anchor + "            \"aarch64-linux-android\" => \"aarch64-linux-android\",\n"
+          if "\"aarch64-linux-android\" => \"aarch64-linux-android\"" not in source:
               if anchor not in source:
                   raise SystemExit("unsupported upstream build.rs: Android target-map anchor missing")
               path.write_text(source.replace(anchor, addition))
