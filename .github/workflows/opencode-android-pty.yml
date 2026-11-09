@@ -1,0 +1,93 @@
+name: Build OpenCode Android PTY
+
+on:
+  push:
+    branches: [opencode-android]
+    paths:
+      - .github/workflows/opencode-android-pty.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-aarch64-android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      OPENCODE_SHA: 12a661ea40cd5863b271a89bb06b8a3ddb7ab5a0
+      RUST_VERSION: 1.90.0
+      ZIG_VERSION: 0.16.0
+      NDK_VERSION: 27.2.12479018
+      ANDROID_API: "28"
+    steps:
+      - name: Check out Nexus branch
+        uses: actions/checkout@v4
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v3
+
+      - name: Install pinned Android NDK
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sdkmanager --install "ndk;${NDK_VERSION}"
+          NDK="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+          test -x "${NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API}-clang"
+          echo "ANDROID_NDK_HOME=${NDK}" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=${ANDROID_HOME}" >> "$GITHUB_ENV"
+
+      - name: Install Rust target and Zig
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rustup toolchain install "${RUST_VERSION}" --profile minimal
+          rustup target add aarch64-linux-android --toolchain "${RUST_VERSION}"
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/zig.tar.xz" "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+          tar -C "$RUNNER_TEMP" -xf "$RUNNER_TEMP/zig.tar.xz"
+          echo "$RUNNER_TEMP/zig-x86_64-linux-${ZIG_VERSION}" >> "$GITHUB_PATH"
+
+      - name: Check out pinned upstream OpenCode
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git clone --no-checkout https://github.com/anomalyco/opencode.git "$RUNNER_TEMP/opencode"
+          cd "$RUNNER_TEMP/opencode"
+          git checkout --detach "$OPENCODE_SHA"
+          test "$(git rev-parse HEAD)" = "$OPENCODE_SHA"
+
+      - name: Build official PTY for Android arm64
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd "$RUNNER_TEMP/opencode/packages/process-daemon"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("build.rs")
+          source = path.read_text()
+          anchor = '            "aarch64-unknown-linux-musl" => "aarch64-linux-musl",\n'
+          addition = anchor + '            "aarch64-linux-android" => "aarch64-linux-android",\n'
+          if '"aarch64-linux-android" => "aarch64-linux-android"' not in source:
+              if anchor not in source:
+                  raise SystemExit("unsupported upstream build.rs: Android target-map anchor missing")
+              path.write_text(source.replace(anchor, addition))
+          PY
+          NDK_BIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          export CC_aarch64_linux_android="$NDK_BIN/aarch64-linux-android${ANDROID_API}-clang"
+          export CXX_aarch64_linux_android="$NDK_BIN/aarch64-linux-android${ANDROID_API}-clang++"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
+          export OPENCODE_ZIG_CPU=baseline
+          export CARGO_TARGET_DIR="$RUNNER_TEMP/cargo-target"
+          cargo +"$RUST_VERSION" build --locked --release --target aarch64-linux-android
+          install -Dm755 "$CARGO_TARGET_DIR/aarch64-linux-android/release/opencode-pty" "$RUNNER_TEMP/artifact/opencode-pty"
+          file "$RUNNER_TEMP/artifact/opencode-pty"
+          readelf -h "$RUNNER_TEMP/artifact/opencode-pty"
+          readelf -d "$RUNNER_TEMP/artifact/opencode-pty"
+
+      - name: Upload Android PTY
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-pty-aarch64-android
+          path: ${{ runner.temp }}/artifact/opencode-pty
+          if-no-files-found: error
+          retention-days: 7
