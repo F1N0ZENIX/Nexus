@@ -1,0 +1,21 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- N monogram, kept inside the adaptive-icon safe zone. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M31,76V32h9l28,26V32h9v44h-9L40,50v26z" />
+    <!-- AI network: three nodes joined to the N diagonal. -->
+    <path
+        android:strokeColor="#DCCEFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M43,44L54,37L66,45M54,69L66,61" />
+    <path
+        android:fillColor="#DCCEFF"
+        android:pathData="M50,33a4,4 0,1 0,8 0a4,4 0,1 0,-8 0M62,41a4,4 0,1 0,8 0a4,4 0,1 0,-8 0M62,57a4,4 0,1 0,8 0a4,4 0,1 0,-8 0M50,65a4,4 0,1 0,8 0a4,4 0,1 0,-8 0" />
+</vector>
