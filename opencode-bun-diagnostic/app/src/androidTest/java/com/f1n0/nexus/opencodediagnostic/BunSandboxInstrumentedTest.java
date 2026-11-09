@@ -38,9 +38,10 @@ public final class BunSandboxInstrumentedTest {
     String[] command = new String[args.length + 1]; command[0] = executable.getAbsolutePath();
     System.arraycopy(args, 0, command, 1, args.length);
     Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+    boolean ended = process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    if (!ended) { process.destroyForcibly(); assertTrue("Bun timed out after " + TIMEOUT_SECONDS + " seconds", false); }
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     try (InputStream stream = process.getInputStream()) { byte[] buffer = new byte[4096]; int count; while ((count = stream.read(buffer)) != -1) bytes.write(buffer, 0, count); }
-    assertTrue("Bun timed out after " + TIMEOUT_SECONDS + " seconds", process.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS));
     return new CommandResult(process.exitValue(), bytes.toString(StandardCharsets.UTF_8.name()));
   }
   private static final class CommandResult { final int exitCode; final String output; CommandResult(int code, String text) { exitCode = code; output = text; } }
