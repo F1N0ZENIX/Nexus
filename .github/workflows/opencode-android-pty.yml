@@ -35,7 +35,9 @@ jobs:
           set -Eeuo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           test -x "${SDKMANAGER}"
+          set +o pipefail
           yes | "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" --licenses >/dev/null
+          set -o pipefail
           "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" --install "ndk;${NDK_VERSION}"
           NDK="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           test -x "${NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API}-clang"
