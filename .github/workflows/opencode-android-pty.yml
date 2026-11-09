@@ -24,14 +24,11 @@ jobs:
       - name: Check out Nexus branch
         uses: actions/checkout@v4
 
-      - name: Set up Android SDK command-line tools
-        uses: android-actions/setup-android@v3
-
       - name: Install pinned Android NDK
         shell: bash
         run: |
           set -Eeuo pipefail
-          sdkmanager --install "ndk;${NDK_VERSION}"
+          sdkmanager --sdk_root="$ANDROID_HOME" --install "ndk;${NDK_VERSION}"
           NDK="${ANDROID_HOME}/ndk/${NDK_VERSION}"
           test -x "${NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${ANDROID_API}-clang"
           echo "ANDROID_NDK_HOME=${NDK}" >> "$GITHUB_ENV"
