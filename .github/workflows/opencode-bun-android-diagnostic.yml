@@ -1,0 +1,94 @@
+name: OpenCode Bun Android diagnostic
+
+on:
+  push:
+    branches: [opencode-android]
+    paths: [opencode-bun-diagnostic/**, .github/workflows/opencode-bun-android-diagnostic.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: opencode-bun-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: 1.4.4
+  BUN_SHA256: d72e42c60e895ccbc16144bb1e0e0ad7ee384841c35b5501a7ec28b4d6d759c9
+  ANDROID_API: 35
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.9 }
+      - name: Download verified official Bun
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-aarch64-android.zip"
+          echo "${BUN_SHA256}  $RUNNER_TEMP/bun.zip" | sha256sum --check --status
+          unzip -q "$RUNNER_TEMP/bun.zip" -d "$RUNNER_TEMP/bun"
+          bun=$(find "$RUNNER_TEMP/bun" -type f -name bun -print -quit)
+          test -n "$bun"; file "$bun" | grep -Eiq "aarch64|ARM aarch64"
+          install -Dm755 "$bun" opencode-bun-diagnostic/app/src/main/jniLibs/arm64-v8a/libbun.so
+      - run: gradle --no-daemon -p opencode-bun-diagnostic :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-bun-android-diagnostic-${{ github.run_number }}
+          path: opencode-bun-diagnostic/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  try-arm64-instrumentation:
+    needs: build-apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.9 }
+      - uses: android-actions/setup-android@v3
+      - name: Prepare verified Bun
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          curl --fail --location --retry 3 -o "$RUNNER_TEMP/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-aarch64-android.zip"
+          echo "${BUN_SHA256}  $RUNNER_TEMP/bun.zip" | sha256sum --check --status
+          unzip -q "$RUNNER_TEMP/bun.zip" -d "$RUNNER_TEMP/bun"
+          install -Dm755 "$(find $RUNNER_TEMP/bun -type f -name bun -print -quit)" opencode-bun-diagnostic/app/src/main/jniLibs/arm64-v8a/libbun.so
+      - name: Attempt ARM64 Android sandbox test
+        id: arm64
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses >/dev/null || true
+          "$sdkmanager" "platform-tools" "platforms;android-${ANDROID_API}" "system-images;android-${ANDROID_API};google_apis;arm64-v8a"
+          echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force --name bun-arm64 --package "system-images;android-${ANDROID_API};google_apis;arm64-v8a"
+          "$ANDROID_HOME/emulator/emulator" -avd bun-arm64 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect >"$RUNNER_TEMP/emulator.log" 2>&1 &
+          for i in $(seq 1 90); do adb shell getprop sys.boot_completed 2>/dev/null | grep -qx 1 && break; sleep 5; done
+          adb shell getprop sys.boot_completed | grep -qx 1
+          adb shell getprop ro.product.cpu.abi | grep -qx arm64-v8a
+          gradle --no-daemon -p opencode-bun-diagnostic :app:connectedDebugAndroidTest
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-bun-arm64-emulator-log-${{ github.run_number }}
+          path: ${{ runner.temp }}/emulator.log
+          if-no-files-found: warn
+          retention-days: 7
+      - if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.arm64.outcome }}" = success ]; then echo "ARM64 instrumentation command completed; only BUN_ANDROID_SANDBOX_OK confirms execution." >> $GITHUB_STEP_SUMMARY; else echo "ARM64 emulator failed or timed out: APK builds, but Bun sandbox execution is NOT confirmed." >> $GITHUB_STEP_SUMMARY; fi
