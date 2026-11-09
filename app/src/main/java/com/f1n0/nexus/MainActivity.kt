@@ -34,12 +34,24 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.launch
 
-private val Bg = Color(0xFF0B0D10)
-private val Surface = Color(0xFF15191F)
-private val SurfaceAlt = Color(0xFF202631)
-private val Accent = Color(0xFF8AB4F8)
-private val Muted = Color(0xFFABB4C3)
-private val Ink = Color(0xFFF4F7FB)
+private val Bg = Color(0xFF120D1A)
+private val Surface = Color(0xFF20172B)
+private val SurfaceAlt = Color(0xFF2D213B)
+private val Accent = Color(0xFFC9A7FF)
+private val Muted = Color(0xFFCABFD5)
+private val Ink = Color(0xFFFFF7FF)
+private val SelectedSurface = Color(0xFF45305D)
+
+private data class NvidiaPreset(val label: String, val id: String)
+
+// IDs verified against NVIDIA's API Catalog documentation on 2026-11-09.
+// Catalog availability can vary by account, region, and time; the manual field remains available.
+private val NvidiaPresets = listOf(
+    NvidiaPreset("Llama 3.1 8B · rápido", "meta/llama-3.1-8b-instruct"),
+    NvidiaPreset("Llama 3.1 70B · geral", "meta/llama-3.1-70b-instruct"),
+    NvidiaPreset("Llama 3.3 70B · multilíngue", "meta/llama-3.3-70b-instruct"),
+    NvidiaPreset("Nemotron Ultra 253B · raciocínio", "nvidia/llama-3.1-nemotron-ultra-253b-v1")
+)
 
 class MainActivity : ComponentActivity() {
     private lateinit var db: NexusDatabase
@@ -73,6 +85,7 @@ class MainActivity : ComponentActivity() {
         var error by remember { mutableStateOf<String?>(null) }
         var historyOpen by remember { mutableStateOf(false) }
         var settingsOpen by remember { mutableStateOf(false) }
+        var modelSwitcherOpen by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
         fun send() {
             if (streaming || prompt.isBlank() || activeChatId.isBlank()) return
@@ -124,7 +137,12 @@ class MainActivity : ComponentActivity() {
                         onNew = { scope.launch { val id = "chat-${System.currentTimeMillis()}"; db.sessions().insert(ChatSession(id, "Nova conversa")); activeChatId = id; error = null; liveAnswer = "" } },
                         onSettings = { settingsOpen = true }
                     )
-                    ProviderCard(config) { settingsOpen = true }
+                    ProviderCard(
+                        config = config,
+                        streaming = streaming,
+                        onChangeModel = { modelSwitcherOpen = true },
+                        onConfigure = { settingsOpen = true }
+                    )
                     if (messages.isEmpty() && (streamingChatId != activeChatId || liveAnswer.isBlank())) EmptyState { prompt = it }
                     LazyColumn(Modifier.weight(1f).fillMaxWidth().padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(messages, key = { it.id }) { MessageBubble(it) }
@@ -137,7 +155,17 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (historyOpen) HistoryDialog(sessions, activeChatId, onSelect = { activeChatId = it; historyOpen = false; error = null; liveAnswer = "" }, onDelete = { id -> scope.launch { db.messages().deleteForChat(id); db.sessions().delete(id); if (activeChatId == id) activeChatId = "" } }, onNew = { scope.launch { val id = "chat-${System.currentTimeMillis()}"; db.sessions().insert(ChatSession(id, "Nova conversa")); activeChatId = id; historyOpen = false } }, onDismiss = { historyOpen = false })
-        if (settingsOpen) SettingsDialog(config, configForProvider = ::configForProvider, onDismiss = { settingsOpen = false }, onSave = { config = it; saveConfig(it); settingsOpen = false })
+        if (modelSwitcherOpen) ModelSwitcherDialog(
+            initial = config,
+            streaming = streaming,
+            configForProvider = ::configForProvider,
+            onDismiss = { modelSwitcherOpen = false },
+            onApply = { provider, model ->
+                config = saveModelSelection(provider, model)
+                modelSwitcherOpen = false
+            }
+        )
+        if (settingsOpen) SettingsDialog(config, streaming = streaming, configForProvider = ::configForProvider, onDismiss = { settingsOpen = false }, onSave = { config = it; saveConfig(it); settingsOpen = false })
     }
 
     private fun providerId(provider: String) = when (provider) {
@@ -214,6 +242,18 @@ class MainActivity : ComponentActivity() {
         return configForProvider(provider)
     }
 
+    /** Persists only the active provider and its model; credentials and endpoints stay untouched. */
+    private fun saveModelSelection(provider: String, model: String): ProviderConfig {
+        val safeProvider = if (isKnownProvider(provider)) provider else LOCAL_PROVIDER
+        val safeModel = model.trim()
+        require(safeModel.isNotBlank()) { "Escolha ou informe um modelo." }
+        prefs.edit()
+            .putString("provider", safeProvider)
+            .putString(modelKey(safeProvider), safeModel)
+            .apply()
+        return configForProvider(safeProvider)
+    }
+
     private fun saveConfig(config: ProviderConfig) {
         val safeProvider = if (isKnownProvider(config.provider)) config.provider else LOCAL_PROVIDER
         prefs.edit()
@@ -236,11 +276,30 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun ProviderCard(config: ProviderConfig, onClick: () -> Unit) {
-    Surface(onClick = onClick, color = Surface, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text(config.provider.uppercase(), color = Accent, fontWeight = FontWeight.Bold, fontSize = 10.sp); Text(config.model.ifBlank { "Configure um modelo" }, maxLines = 1, fontSize = 14.sp) }
-            Text("CONFIGURAR", color = Accent, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+@Composable private fun ProviderCard(
+    config: ProviderConfig,
+    streaming: Boolean,
+    onChangeModel: () -> Unit,
+    onConfigure: () -> Unit
+) {
+    Surface(color = Surface, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(13.dp)) {
+            Text(config.provider.uppercase(), color = Accent, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+            Text(config.model.ifBlank { "Configure um modelo" }, maxLines = 1, fontSize = 14.sp)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onChangeModel, enabled = !streaming, contentPadding = PaddingValues(0.dp)) {
+                    Text("TROCAR MODELO", color = Accent, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+                Spacer(Modifier.width(16.dp))
+                TextButton(onClick = onConfigure, enabled = !streaming, contentPadding = PaddingValues(0.dp)) {
+                    Text("CONFIGURAR", color = Muted, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                }
+                if (streaming) {
+                    Spacer(Modifier.weight(1f))
+                    Text("Muda no próximo envio", color = Muted, fontSize = 10.sp)
+                }
+            }
         }
     }
 }
@@ -276,7 +335,7 @@ private fun HistoryDialog(
         ) {
             items(sessions, key = { it.id }) { session ->
                 Surface(
-                    color = if (session.id == active) Color(0xFF29364C) else SurfaceAlt,
+                    color = if (session.id == active) SelectedSurface else SurfaceAlt,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().clickable { onSelect(session.id) }
                 ) {
@@ -301,7 +360,82 @@ private fun HistoryDialog(
     dismissButton = { TextButton(onClick = onNew) { Text("＋ Nova conversa", color = Accent) } }
 )
 
-@Composable private fun SettingsDialog(initial: ProviderConfig, configForProvider: (String) -> ProviderConfig, onDismiss: () -> Unit, onSave: (ProviderConfig) -> Unit) {
+@Composable
+private fun ModelSwitcherDialog(
+    initial: ProviderConfig,
+    streaming: Boolean,
+    configForProvider: (String) -> ProviderConfig,
+    onDismiss: () -> Unit,
+    onApply: (String, String) -> Unit
+) {
+    var provider by remember { mutableStateOf(initial.provider) }
+    var model by remember { mutableStateOf(initial.model) }
+    var message by remember { mutableStateOf<String?>(null) }
+    fun switchProvider(next: String) {
+        val saved = configForProvider(next)
+        provider = saved.provider
+        model = saved.model
+        message = null
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Surface,
+        title = { Text("Trocar modelo", color = Ink, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(
+                    "A conversa continua aqui. Só o próximo envio usa a escolha nova; endpoint e chave salvos não são alterados.",
+                    color = Muted, fontSize = 12.sp, lineHeight = 17.sp
+                )
+                if (streaming) Text("Há um envio em andamento; a configuração dele fica travada.", color = Muted, fontSize = 12.sp)
+                ProviderChoice(LOCAL_PROVIDER, provider) { switchProvider(LOCAL_PROVIDER) }
+                ProviderChoice(NVIDIA_NIM_PROVIDER, provider) { switchProvider(NVIDIA_NIM_PROVIDER) }
+                ProviderChoice(CUSTOM_PROVIDER, provider) { switchProvider(CUSTOM_PROVIDER) }
+                ProviderChoice(ANTHROPIC_PROVIDER, provider) { switchProvider(ANTHROPIC_PROVIDER) }
+                ProviderChoice(CLAUDE_CODE_PROVIDER, provider) { switchProvider(CLAUDE_CODE_PROVIDER) }
+                if (provider == NVIDIA_NIM_PROVIDER) NvidiaPresetList(model) { model = it }
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it; message = null },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("Modelo (nome livre)") }
+                )
+                message?.let { Text(it, color = Color(0xFFFFB4AB), fontSize = 11.sp) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                if (model.isBlank()) message = "Escolha ou informe um modelo."
+                else onApply(provider, model)
+            }, enabled = !streaming) { Text("Usar no próximo envio", color = Accent) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar", color = Muted) } }
+    )
+}
+
+@Composable
+private fun NvidiaPresetList(selectedModel: String, onSelect: (String) -> Unit) {
+    Text("Modelos sugeridos pela NVIDIA", color = Accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    Text("A disponibilidade depende da sua conta e do catálogo atual.", color = Muted, fontSize = 11.sp)
+    NvidiaPresets.forEach { preset ->
+        Surface(
+            color = if (selectedModel == preset.id) SelectedSurface else SurfaceAlt,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().clickable { onSelect(preset.id) }
+        ) {
+            Column(Modifier.padding(11.dp)) {
+                Text(preset.label, color = if (selectedModel == preset.id) Accent else Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(preset.id, color = Muted, fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+@Composable private fun SettingsDialog(initial: ProviderConfig, streaming: Boolean, configForProvider: (String) -> ProviderConfig, onDismiss: () -> Unit, onSave: (ProviderConfig) -> Unit) {
     var provider by remember { mutableStateOf(initial.provider) }
     var endpoint by remember { mutableStateOf(initial.baseUrl) }
     var claudeCodeUrl by remember { mutableStateOf(initial.claudeCodeUrl) }
@@ -319,8 +453,10 @@ private fun HistoryDialog(
     }
     AlertDialog(onDismissRequest = onDismiss, containerColor = Surface, title = { Text("Provedor e privacidade", color = Ink, fontWeight = FontWeight.Bold) }, text = { Column(Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text("As mensagens e o histórico ficam no armazenamento privado deste celular. Ao enviar, a conversa vai somente ao endpoint abaixo; a chave fica criptografada no aparelho.", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
+        if (streaming) Text("O envio atual usa a configuração que já foi travada; mudanças aqui valem só para o próximo envio.", color = Muted, fontSize = 12.sp, lineHeight = 17.sp)
         ProviderChoice(LOCAL_PROVIDER, provider) { switchProvider(LOCAL_PROVIDER) }; ProviderChoice(NVIDIA_NIM_PROVIDER, provider) { switchProvider(NVIDIA_NIM_PROVIDER) }; ProviderChoice(CUSTOM_PROVIDER, provider) { switchProvider(CUSTOM_PROVIDER) }; ProviderChoice(ANTHROPIC_PROVIDER, provider) { switchProvider(ANTHROPIC_PROVIDER) }; ProviderChoice(CLAUDE_CODE_PROVIDER, provider) { switchProvider(CLAUDE_CODE_PROVIDER) }
-        OutlinedTextField(value = model, onValueChange = { model = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Modelo (nome livre)") })
+        if (provider == NVIDIA_NIM_PROVIDER) NvidiaPresetList(model) { model = it }
+        OutlinedTextField(value = model, onValueChange = { model = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Modelo (nome livre; aceita futuros IDs)") })
         if (provider == CLAUDE_CODE_PROVIDER) {
             OutlinedTextField(value = claudeCodeUrl, onValueChange = { claudeCodeUrl = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("URL do bridge Claude Code") })
         } else {
@@ -342,4 +478,4 @@ private fun HistoryDialog(
 }
 
 
-@Composable private fun ProviderChoice(name: String, selected: String, onClick: () -> Unit) { Surface(color = if (selected == name) Color(0xFF29364C) else SurfaceAlt, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) { Text(name, Modifier.padding(12.dp), color = if (selected == name) Accent else Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) } }
+@Composable private fun ProviderChoice(name: String, selected: String, onClick: () -> Unit) { Surface(color = if (selected == name) SelectedSurface else SurfaceAlt, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) { Text(name, Modifier.padding(12.dp), color = if (selected == name) Accent else Ink, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) } }
