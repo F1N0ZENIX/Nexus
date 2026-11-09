@@ -50,6 +50,9 @@ interface ChatSessionDao {
     @Query("SELECT * FROM chat_sessions ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<ChatSession>>
 
+    @Query("SELECT EXISTS(SELECT 1 FROM chat_sessions WHERE id = :id)")
+    suspend fun exists(id: String): Boolean
+
     @Insert
     suspend fun insert(session: ChatSession)
 
