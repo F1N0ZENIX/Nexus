@@ -43,4 +43,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }

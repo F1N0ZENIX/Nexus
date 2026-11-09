@@ -2,7 +2,7 @@ name: Nexus Android CI
 
 on:
   push:
-    branches: [revamp-nexus]
+    branches: [revamp-nexus, opencode-android]
     paths:
       - 'app/**'
       - '*.gradle.kts'
