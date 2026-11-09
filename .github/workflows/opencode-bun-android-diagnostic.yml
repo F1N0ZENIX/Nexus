@@ -5,19 +5,15 @@ on:
     branches: [opencode-android]
     paths: [opencode-bun-diagnostic/**, .github/workflows/opencode-bun-android-diagnostic.yml]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: opencode-bun-diagnostic-${{ github.ref }}
   cancel-in-progress: true
-
 env:
   BUN_VERSION: 1.4.4
   BUN_SHA256: d72e42c60e895ccbc16144bb1e0e0ad7ee384841c35b5501a7ec28b4d6d759c9
   ANDROID_API: 35
-
 jobs:
   build-apk:
     runs-on: ubuntu-24.04
@@ -45,7 +41,6 @@ jobs:
           path: opencode-bun-diagnostic/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
-
   try-arm64-instrumentation:
     needs: build-apk
     runs-on: ubuntu-24.04
@@ -58,6 +53,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: 8.9 }
       - uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
       - name: Prepare verified Bun
         shell: bash
         run: |
@@ -66,12 +63,13 @@ jobs:
           echo "${BUN_SHA256}  $RUNNER_TEMP/bun.zip" | sha256sum --check --status
           unzip -q "$RUNNER_TEMP/bun.zip" -d "$RUNNER_TEMP/bun"
           install -Dm755 "$(find $RUNNER_TEMP/bun -type f -name bun -print -quit)" opencode-bun-diagnostic/app/src/main/jniLibs/arm64-v8a/libbun.so
-      - name: Attempt ARM64 Android sandbox test
+      - name: Inspect host virtualization and attempt ARM64 sandbox test
         id: arm64
         continue-on-error: true
         shell: bash
         run: |
           set -Eeuo pipefail
+          { uname -m; ls -l /dev/kvm; "$ANDROID_HOME/emulator/emulator" -accel-check; } | tee "$RUNNER_TEMP/arm64-host.log" || true
           sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$sdkmanager" --licenses >/dev/null || true
           "$sdkmanager" "platform-tools" "platforms;android-${ANDROID_API}" "system-images;android-${ANDROID_API};google_apis;arm64-v8a"
@@ -81,6 +79,13 @@ jobs:
           adb shell getprop sys.boot_completed | grep -qx 1
           adb shell getprop ro.product.cpu.abi | grep -qx arm64-v8a
           gradle --no-daemon -p opencode-bun-diagnostic :app:connectedDebugAndroidTest
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-bun-arm64-host-log-${{ github.run_number }}
+          path: ${{ runner.temp }}/arm64-host.log
+          if-no-files-found: warn
+          retention-days: 7
       - if: always()
         uses: actions/upload-artifact@v4
         with:
