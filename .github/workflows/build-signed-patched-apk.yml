@@ -1,0 +1,65 @@
+name: Build signed patched Nexus APK
+
+on:
+  push:
+    branches: [build/signed-opencode-port-apk]
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-signed-patched-apk.yml'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-sign-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout patched source
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Run unit tests
+        run: gradle --no-daemon testDebugUnitTest
+      - name: Build release APK
+        run: gradle --no-daemon assembleRelease
+      - name: Sign release APK with existing persistent key
+        env:
+          NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
+          NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
+          NEXUS_KEY_ALIAS: ${{ secrets.NEXUS_KEY_ALIAS }}
+          NEXUS_KEY_PASSWORD: ${{ secrets.NEXUS_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          : "${NEXUS_KEYSTORE_BASE64:?NEXUS_KEYSTORE_BASE64 is required}"
+          : "${NEXUS_KEYSTORE_PASSWORD:?NEXUS_KEYSTORE_PASSWORD is required}"
+          : "${NEXUS_KEY_ALIAS:?NEXUS_KEY_ALIAS is required}"
+          : "${NEXUS_KEY_PASSWORD:?NEXUS_KEY_PASSWORD is required}"
+          echo "$NEXUS_KEYSTORE_BASE64" | base64 --decode > nexus-release.jks
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          test -n "$APKSIGNER"
+          "$APKSIGNER" sign --ks nexus-release.jks --ks-key-alias "$NEXUS_KEY_ALIAS" --ks-pass env:NEXUS_KEYSTORE_PASSWORD --key-pass env:NEXUS_KEY_PASSWORD --out Nexus-AI-opencode-port-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
+          "$APKSIGNER" verify --verbose --print-certs Nexus-AI-opencode-port-release.apk | tee signing-verification.txt
+          sha256sum Nexus-AI-opencode-port-release.apk | tee apk-sha256.txt
+          rm -f nexus-release.jks
+      - name: Upload signed APK and verification
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nexus-AI-opencode-port-signed-release
+          path: |
+            Nexus-AI-opencode-port-release.apk
+            signing-verification.txt
+            apk-sha256.txt
+          if-no-files-found: error
+          retention-days: 30
