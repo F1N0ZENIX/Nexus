@@ -31,9 +31,9 @@ jobs:
           gradle-version: '8.9'
       - name: Run unit tests
         run: gradle --no-daemon testDebugUnitTest
-      - name: Build release APK
-        run: gradle --no-daemon assembleRelease
-      - name: Sign release APK with existing persistent key
+      - name: Build APKs
+        run: gradle --no-daemon assembleDebug assembleRelease
+      - name: Sign release APK or package debug fallback
         env:
           NEXUS_KEYSTORE_BASE64: ${{ secrets.NEXUS_KEYSTORE_BASE64 }}
           NEXUS_KEYSTORE_PASSWORD: ${{ secrets.NEXUS_KEYSTORE_PASSWORD }}
@@ -42,17 +42,20 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          : "${NEXUS_KEYSTORE_BASE64:?NEXUS_KEYSTORE_BASE64 is required}"
-          : "${NEXUS_KEYSTORE_PASSWORD:?NEXUS_KEYSTORE_PASSWORD is required}"
-          : "${NEXUS_KEY_ALIAS:?NEXUS_KEY_ALIAS is required}"
-          : "${NEXUS_KEY_PASSWORD:?NEXUS_KEY_PASSWORD is required}"
-          echo "$NEXUS_KEYSTORE_BASE64" | base64 --decode > nexus-release.jks
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
           test -n "$APKSIGNER"
-          "$APKSIGNER" sign --ks nexus-release.jks --ks-key-alias "$NEXUS_KEY_ALIAS" --ks-pass env:NEXUS_KEYSTORE_PASSWORD --key-pass env:NEXUS_KEY_PASSWORD --out Nexus-AI-opencode-port-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
+          if [ -n "$NEXUS_KEYSTORE_BASE64" ] && [ -n "$NEXUS_KEYSTORE_PASSWORD" ] && [ -n "$NEXUS_KEY_ALIAS" ] && [ -n "$NEXUS_KEY_PASSWORD" ]; then
+            echo "$NEXUS_KEYSTORE_BASE64" | base64 --decode > nexus-release.jks
+            "$APKSIGNER" sign --ks nexus-release.jks --ks-key-alias "$NEXUS_KEY_ALIAS" --ks-pass env:NEXUS_KEYSTORE_PASSWORD --key-pass env:NEXUS_KEY_PASSWORD --out Nexus-AI-opencode-port-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
+            rm -f nexus-release.jks
+            echo "BUILD_KIND=release-persistent-signature" | tee build-kind.txt
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk Nexus-AI-opencode-port-release.apk
+            echo "::warning::Persistent signing secrets are unavailable; uploaded APK is debug-signed and cannot update the installed release."
+            echo "BUILD_KIND=debug-fallback" | tee build-kind.txt
+          fi
           "$APKSIGNER" verify --verbose --print-certs Nexus-AI-opencode-port-release.apk | tee signing-verification.txt
           sha256sum Nexus-AI-opencode-port-release.apk | tee apk-sha256.txt
-          rm -f nexus-release.jks
       - name: Upload signed APK and verification
         uses: actions/upload-artifact@v4
         with:
@@ -61,5 +64,6 @@ jobs:
             Nexus-AI-opencode-port-release.apk
             signing-verification.txt
             apk-sha256.txt
+            build-kind.txt
           if-no-files-found: error
           retention-days: 30
